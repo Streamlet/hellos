@@ -7,7 +7,7 @@
 * 16-bit real mode:
     * Legacy BIOS
         * Bootloader OS (MBR)
-            * Print Hello 
+            * ✓ Print Hello 
             * Process keyboard input (Echo, Reboot, Shutdown)
         * Disk OS demo
             * Use BIOS services
