@@ -8,7 +8,7 @@
     * Legacy BIOS
         * Bootloader OS (MBR)
             * ✓ Print Hello 
-            * Process keyboard input (Echo, Reboot, Shutdown)
+            * ✓ Process keyboard input (Echo, Reboot, Shutdown)
         * Disk OS demo
             * Use BIOS services
                 * Print Hello
