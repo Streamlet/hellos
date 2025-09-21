@@ -1,27 +1,21 @@
 org 0000    ; the standard bootloader load address
 bits 16     ; 16-bit real mode
 
-start:
-    ; init segment registers
+init_registers:
     mov ax, cs
     mov ds, ax
     mov ss, ax
-    mov ax, 0xB800
-    mov es, ax      ; set es to point to segment of video memory
-    ; set stack pointer
-    mov sp, 0x7C00
-    jmp start_kernel
+    xor ax, ax
+    mov sp, ax
+
+jmp kernel_main
 
 times 512 * 16 - ($ - $$) db 0 ; make the file at least 1 cluster (16 sectors)
 
-start_kernel:
+kernel_main:
     mov si, msg     ; load address of msg into SI
     call print_string
-
-; wait forever
-halt:
-    hlt         ; halt the CPU
-jmp halt
+    jmp $
 
 ; function to print a null-terminated string at the current cursor position
 ; input: DS:SI points to the string

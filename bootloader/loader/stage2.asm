@@ -1,59 +1,103 @@
-org 0x8000  ; the standard bootloader load address
+org 0x8000  ; the stage2 bootloader load address
 bits 16     ; 16-bit real mode
 
-%macro DEBUG_PRINT 1
-    mov [debug_buffer], %1
-    call debug_print_hex
-%endmacro
+; %include "debug.asm"
+
+init_registers:
+    xor ax, ax
+    mov ds, ax
+    mov ss, ax
+    mov sp, 0x8000
 
 find_bootable_partition:
-    .find_partition:
-        mov si, 0x7C00 + 446    ; load partition table address into SI
-        mov cl, 4               ; 4 partition entries to check
-        .next_partition:
-            mov al, [si]        ; load boot indicator byte
-            cmp al, 0x80        ; check if bootable
-            je .check_partition_type
-            add si, 16          ; move to next partition entry (16 bytes each)
-            dec cl              ; decrement counter
-            jnz .next_partition
-        mov si, msg_no_boot_partition_found
-        call print_string
-        jmp halt
-    .check_partition_type:
-        xor ah, ah          ; clear AH
-        mov al, [si + 4]    ; load partition type byte
-        cmp al, 0x01        ; check if FAT12 partition
-        je fat12
-        cmp al, 0x04        ; check if FAT16 partition (< 65536 sectors)
-        je fat16
-        cmp al, 0x06        ; check if FAT16B partition (>= 65536 sectors)
-        je fat16
-        cmp al, 0x0B        ; check if FAT32 partition (CHS)
-        je fat32
-        cmp al, 0x0C        ; check if FAT32 partition (LBA)
-        je fat32
-        cmp al, 0x0E        ; check if FAT16B partition (LBA)
-        je fat16
-        mov si, msg_unsupported_partition
-        call print_string
-        jmp halt
+    mov si, 0x7C00 + 446    ; load partition table address into SI
+    mov cl, 4               ; 4 partition entries to check
+    .next_partition:
+        mov al, [si]        ; load boot indicator byte
+        cmp al, 0x80        ; check if bootable
+        je check_partition_type
+        add si, 16          ; move to next partition entry (16 bytes each)
+        dec cl              ; decrement counter
+        jnz .next_partition
+    mov si, msg_no_boot_partition_found
+    call print_string
+    jmp $
+
+check_partition_type:
+    xor ah, ah          ; clear AH
+    mov al, [si + 4]    ; load partition type byte
+    cmp al, 0x01        ; check if FAT12 partition
+    je load_vbr_fat12
+    cmp al, 0x04        ; check if FAT16 partition (< 65536 sectors)
+    je load_vbr_fat16
+    cmp al, 0x06        ; check if FAT16B partition (>= 65536 sectors)
+    je load_vbr_fat16
+    cmp al, 0x0B        ; check if FAT32 partition (CHS)
+    je load_vbr_fat32
+    cmp al, 0x0C        ; check if FAT32 partition (LBA)
+    je load_vbr_fat32
+    cmp al, 0x0E        ; check if FAT16B partition (LBA)
+    je load_vbr_fat16
+    mov si, msg_unsupported_partition
+    call print_string
+    jmp $
+
+VBR_ADDRESS equ 0xA000
+BYTES_PER_SECTOR equ VBR_ADDRESS + 0x0B
+SECTORS_PER_CLUSTER equ VBR_ADDRESS + 0x0D
+RESERVED_SECTORS equ VBR_ADDRESS + 0x0E
+NUM_FATS equ VBR_ADDRESS + 0x10
+MAX_ROOT_DIR_ENTRIES equ VBR_ADDRESS + 0x11
+TOTAL_SECTORS_16 equ VBR_ADDRESS + 0x13
+MEDIA_DESCRIPTOR equ VBR_ADDRESS + 0x15
+SECTORS_PER_FAT equ VBR_ADDRESS + 0x16
+SECTORS_PER_TRACK equ VBR_ADDRESS + 0x18
+NUM_HEADS equ VBR_ADDRESS + 0x1A
+HIDDEN_SECTORS equ VBR_ADDRESS + 0x1C
+TOTAL_SECTORS_32 equ VBR_ADDRESS + 0x20
+SECTORS_PER_FAT_32 equ VBR_ADDRESS + 0x24
+; function to load vbr
+; input: SI = pointer to partition entry
+; output: none (loads VBR into memory at 0xA000)
+load_vbr:
+    push 0
+    push 0
+    mov ax, [si + 10]
+    push ax
+    mov ax, [si + 8]
+    push ax
+    push 0
+    push VBR_ADDRESS
+    push 1
+    push LBA_PACKET_SIZE
+    call bios_load_sector_lba
+    add sp, 16
+    jnc .vbr_loaded
+    mov si, msg_failed_to_load_vbr
+    call print_string
+    jmp $
+    .vbr_loaded:
+        ret
+
 
 fat_lba dd 0
+fat_bytes_per_2items db 0
 root_dir_lba dd 0
 root_dir_sectors dw 0
 data_lba dd 0
-fat12:
+
+load_vbr_fat12:
     call load_vbr
-    mov ax, [si + 8]            ; load starting LBA (4 bytes) into BX:AX
+    mov ax, [si + 8]                ; load starting LBA (4 bytes) into BX:AX
     mov bx, [si + 10]
-    add ax, [RESERVED_SECTORS]  ; reserved sectors
+    add ax, [RESERVED_SECTORS]
     adc bx, 0
     mov word [fat_lba], ax
     mov word [fat_lba + 2], bx
-    mov cl, [NUM_FATS]          ; fats count
+    mov byte [fat_bytes_per_2items], 3  ; FAT12 uses 1.5 bytes per entry, so 3 bytes for 2 entries
+    mov cl, [NUM_FATS]              ; fats count
     .add_fats:
-        add ax, [SECTORS_PER_FAT_16]   ; sectors per fat
+        add ax, [SECTORS_PER_FAT]   ; sectors per fat
         adc bx, 0
         dec cl
     jnz .add_fats
@@ -74,60 +118,19 @@ fat12:
     adc bx, 0
     mov word [data_lba], ax
     mov word [data_lba + 2], bx
+    jmp load_root_dir
 
-    call load_root_dir
-    call find_kernel_file
-    call load_kernel_file
-    call jump_to_kernel
-
-fat16:
+load_vbr_fat16:
     call load_vbr
-    jmp halt
+    jmp $   ; TODO
+    jmp load_root_dir
 
-fat32:
+load_vbr_fat32:
     call load_vbr
-    jmp halt
+    jmp $   ; TODO
+    jmp load_root_dir
 
-; function to load vbr
-; input: SI = pointer to partition entry
-; output: none (loads VBR into memory at 0xA000)
-VBR_ADDRESS equ 0xA000
-BYTES_PER_SECTOR equ VBR_ADDRESS + 0x0B
-SECTORS_PER_CLUSTER equ VBR_ADDRESS + 0x0D
-RESERVED_SECTORS equ VBR_ADDRESS + 0x0E
-NUM_FATS equ VBR_ADDRESS + 0x10
-MAX_ROOT_DIR_ENTRIES equ VBR_ADDRESS + 0x11
-TOTAL_SECTORS_16 equ VBR_ADDRESS + 0x13
-MEDIA_DESCRIPTOR equ VBR_ADDRESS + 0x15
-SECTORS_PER_FAT_16 equ VBR_ADDRESS + 0x16
-SECTORS_PER_TRACK equ VBR_ADDRESS + 0x18
-NUM_HEADS equ VBR_ADDRESS + 0x1A
-HIDDEN_SECTORS equ VBR_ADDRESS + 0x1C
-TOTAL_SECTORS_32 equ VBR_ADDRESS + 0x20
-SECTORS_PER_FAT_32 equ VBR_ADDRESS + 0x24
-load_vbr:
-    push 0
-    push 0
-    mov ax, [si + 10]
-    push ax
-    mov ax, [si + 8]
-    push ax
-    push 0
-    push VBR_ADDRESS
-    push 1
-    push LBA_PACKET_SIZE
-    call bios_load_sector_lba
-    add sp, 16
-    jnc .vbr_loaded
-    mov si, msg_failed_to_load_vbr
-    call print_string
-    jmp halt
-    .vbr_loaded:
-        ret
 
-; function to load root directory
-; input: none (uses global variables)
-; output: none (loads root directory into memory at 0xB000)
 ROOT_DIR_LBA equ 0xB000
 load_root_dir:
     push 0
@@ -143,16 +146,11 @@ load_root_dir:
     push LBA_PACKET_SIZE
     call bios_load_sector_lba
     add sp, 16
-    jnc .root_dir_loaded  ; change label to reflect root dir loading
+    jnc find_kernel_file
     mov si, msg_failed_to_load_root_dir
     call print_string
-    jmp halt
-    .root_dir_loaded:  ; change label to reflect root dir loading
-        ret
+    jmp $
 
-; function to find kernel file in root directory
-; input: none (uses memory at ROOT_DIR_LBA and global variables)
-; output: none (sets global variable with starting LBA of kernel file and size)
 kernel_file_name db 'KERNEL  BIN ', 0 ; 11 bytes (8.3 format)
 kernel_file_cluster dw 0
 find_kernel_file:
@@ -173,33 +171,32 @@ find_kernel_file:
         mov al, 0xE5        ; treat 0x05 as 0xE5 for comparison
         .compare_filename:
             push si
-            call strcmp_prefix
+            push cx
+            mov cx, 12      ; compare 12 bytes (8.3 format)
+            call strncmp
+            pop cx
             pop si
-            jnz .skip_entry   ; if not equal, skip to next entry
+            jnz .skip_entry ; if not equal, skip to next entry
         ; if we reach here, the filename matches
-        ; mov ax, [si + 0x1C]
         mov dx, [si + 0x1E]
-        cmp dx, 2   ; max 128K file size (2 sectors of 64K)
+        cmp dx, 2           ; max 128K file size (2 sectors of 64K)
         jg .too_large_file
         ; load starting cluster (2 bytes at offset 0x1A)
         mov ax, [si + 0x1A]
         mov [kernel_file_cluster], ax
-        ret
+        jmp load_kernel_file
     .skip_entry:
         add si, 32          ; move to next entry (32 bytes each)
         loop .next_entry
     .not_found:
         mov si, msg_kernel_file_not_found
         call print_string
-        jmp halt            ; halt execution if kernel file not found
+        jmp $               ; halt execution if kernel file not found
     .too_large_file:
         mov si, msg_kernel_file_too_large
         call print_string
-        jmp halt            ; halt execution if file is too large
+        jmp $               ; halt execution if file is too large
 
-; function to load kernel file
-; input: none (uses global variables)
-; output: none (loads kernel into memory at 0x80000)
 FAT_ADDRESS equ 0xC000
 KERNEL_ADDRESS_SEGMENT equ 0x8000
 KERNEL_ADDRESS_OFFSET equ 0x0000
@@ -239,60 +236,64 @@ load_kernel_file:
         add ax, dx
         mov es, ax
 
-        ; get next cluster from FAT
-        ; FAT entry address: fat_lba + cluster * 1.5 / bytes_per_sector
-        mov ax, si
-        mov bx, 3
-        mul bx                      ; dx:ax = cluster * 3
-        shr dx, 1
-        rcr ax, 1                   ; dx:ax = cluster * 1.5
-        mov bx, [BYTES_PER_SECTOR]  ; load bytes per sector
-        div bx                      ; ax = sector offset, dx = byte offset
-        push dx
-        xor dx, dx
-        add ax, [fat_lba]
-        adc dx, [fat_lba + 2]
-        push 0
-        push 0
-        push dx
-        push ax                    ; Starting LBA
-        push 0                     ; Segment of output buffer
-        push FAT_ADDRESS           ; Offset of output buffer
-        push 1                     ; Number of sectors to read
-        push LBA_PACKET_SIZE       ; Size of packet
-        call bios_load_sector_lba
-        add sp, 16
-        jc .load_error             ; Check for errors
-        pop dx
-        push si
-        mov si, FAT_ADDRESS
-        add si, dx
-        mov ax, [si]
-        pop si
-        ; if si is odd, get high 12 bits, else low 12 bits
-        test si, 1
+        ; set SI to next cluster
+        call find_next_cluster
+        jc .load_error
+        test si, 1                  ; check if cluster number is odd or even
         jz .even
         .odd:
-            shr ax, 4               ; Odd cluster, get high 12 bits
+            shr ax, 4               ; odd cluster, get high 12 bits
         .even:
-            and ax, 0x0FFF          ; Mask to get 12-bit FAT entry
+            and ax, 0x0FFF          ; mask to get 12-bit FAT entry
         mov si, ax
         cmp si, 0x0FF8              ; check for end-of-chain markers
         jl .next_cluster            ; if not end of chain, load next cluster
-        ret
+        jmp jump_to_kernel
     .load_error:
         mov si, msg_failed_to_load_kernel_file
         call print_string
-        jmp halt
+        jmp $
 
 jump_to_kernel:
     jmp KERNEL_ADDRESS_SEGMENT:KERNEL_ADDRESS_OFFSET
 
+; function to find the next cluster in FAT
+; inputs: SI = current cluster number
+; outputs: DX:AX = next cluster number, CF set on error
+find_next_cluster:
+    ; FAT entry address: fat_lba + cluster * 1.5 / bytes_per_sector
+    mov ax, si
+    movzx bx, byte [fat_bytes_per_2items]
+    mul bx                      ; dx:ax = cluster * bytes_per_2items = next_cluster_offset * 2
+    shr dx, 1
+    rcr ax, 1                   ; dx:ax = cluster * bytes_per_items = next_cluster_offset
+    mov bx, [BYTES_PER_SECTOR]  ; load bytes per sector
+    div bx                      ; ax = sector offset, dx = byte offset
+    push dx
+    xor dx, dx
+    add ax, [fat_lba]
+    adc dx, [fat_lba + 2]
+    push 0
+    push 0
+    push dx
+    push ax                    ; Starting LBA
+    push 0                     ; Segment of output buffer
+    push FAT_ADDRESS           ; Offset of output buffer
+    push 1                     ; Number of sectors to read
+    push LBA_PACKET_SIZE       ; Size of packet
+    call bios_load_sector_lba
+    add sp, 16
+    jc .end             ; Check for errors
+    pop dx
+    push si
+    mov si, FAT_ADDRESS
+    add si, dx
+    mov ax, [si]
+    mov dx, [si + 2]
+    pop si
+    .end:
+        ret
 
-; wait forever
-halt:
-    hlt         ; halt the CPU
-    jmp halt
 
 ; function to load sectors from disk using LBA
 ; inputs: stack
@@ -320,10 +321,10 @@ bios_load_sector_lba:
 ; function to print a null-terminated string at the current cursor position
 ; input: DS:SI points to the string
 print_string:
-    mov ah, 0x0E    ; bios teletype function to print character in AL
+    mov ah, 0x0E        ; bios teletype function to print character in AL
     .loop:
         lodsb           ; AL = [DS:SI], SI++
-        cmp al, 0       ; test for null terminator
+        test al, al     ; test for null terminator
         je .end         ; if zero, end of string, jump to halt
         int 0x10        ; call BIOS video interrupt to print character in AL
         jmp .loop       ; repeat for next character
@@ -331,20 +332,18 @@ print_string:
         ret
 
 ; function to compare two null-terminated strings
-; input: SI points to full string, DI points to prefix string
+; input: SI points to full string, DI points to prefix string, CX = length of the part to compare
 ; output: ZF set if equal, clear if not equal
-strcmp_prefix:
+strncmp:
     .loop:
+        test cx, cx
+        je .end         ; if length is zero, strings are equal, jump to end
         mov al, [si]    ; load byte from first string
-        mov bl, [di]    ; load byte from second string
-        cmp bl, 0       ; check for null terminator in prefix
-        je .end         ; if null terminator, prefix matches, jump to end
-        cmp al, bl      ; compare bytes
+        cmp al, [di]    ; compare bytes
         jne .end        ; if not equal, jump to end
-        cmp al, 0       ; check for null terminator
-        je .end         ; if null terminator, strings are equal, jump to end
         inc si          ; move to next byte in first string
         inc di          ; move to next byte in second string
+        dec cx          ; decrement length
         jmp .loop       ; repeat comparison
     .end:
         ret
@@ -357,47 +356,3 @@ msg_failed_to_load_root_dir db 'Error: failed to load root directory.', 0x0D, 0x
 msg_kernel_file_not_found db 'Error: kernel file not found.', 0x0D, 0x0A, 0
 msg_kernel_file_too_large db 'Error: kernel file larger than 128K.', 0x0D, 0x0A, 0
 msg_failed_to_load_kernel_file db 'Error: failed to load kernel file.', 0x0D, 0x0A, 0
-
-
-; 16 byte buffer for debug print
-debug_buffer times 16 db 0  ; Reserve 16 bytes for the debug buffer
-debug_print_hex:
-    pusha
-    mov ah, 0x0E
-    mov ch, 16
-    mov si, debug_buffer
-    .loop_bytes:
-        mov cl, 4
-        .loop_chars:
-            mov al, [si]
-            shr al, cl
-            and al, 0x0F
-            cmp al, 9
-            jg .hex
-            .digit:
-                add al, '0'
-                jmp .print
-            .hex:
-                add al, 'A' - 10
-                jmp .print
-            .print:
-                int 0x10
-                cmp cl, 0
-                jz .byte_done
-                xor cl, cl
-                and al, 0x0F
-                jmp .loop_chars
-        .byte_done:
-            inc si
-            dec ch
-            jz .done
-            mov al, ' '
-            int 0x10
-            jmp .loop_bytes
-    .done:
-        mov al, 0x0D
-        int 0x10
-        mov al, 0x0A
-        int 0x10
-        popa
-        ret
