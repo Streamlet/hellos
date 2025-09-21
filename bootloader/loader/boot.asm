@@ -6,8 +6,6 @@ start:
     mov ax, 0
     mov ds, ax
     mov ss, ax
-    mov ax, 0xB800
-    mov es, ax      ; set es to point to segment of video memory
     ; set stack pointer
     mov sp, 0x7C00
 
@@ -42,6 +40,8 @@ print_string:
 
 ; function to clear screen
 clean_screen:
+    mov ax, 0xB800
+    mov es, ax      ; set es to point to segment of video memory
     mov di, 0       ; now ES:DI points to the start of the screen (0xB800:0000)
     mov ax, 0x0720  ; 20h = space character, 07h = attribute (light grey on black)
     mov cx, 80 * 25 ; 80 cols * 25 rows = 2000 characters
@@ -72,7 +72,7 @@ lba_packet:
     db 16         ; size of packet
     db 0          ; reserved
 lba_packet_sectors:
-    dw 16         ; number of sectors to read
+    dw 7          ; number of sectors to read
 lba_packet_buffer:
     dw 0x8000     ; offset of buffer
     dw 0          ; segment of buffer
