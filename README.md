@@ -11,9 +11,9 @@
             * ✓ Process keyboard input (Echo, Reboot, Shutdown)
         * Disk OS demo
             * ✓ Two-stage loader
-            * Use BIOS services
+            * ✓ Use BIOS services
                 * ✓ Print Hello
-                * Process keyboard input
+                * ✓ Process keyboard input
             * Override BIOS interrupts (no BIOS service dependency, in C language)
                 * Print Hello
                 * Process keyboard input
