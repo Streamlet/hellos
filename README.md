@@ -2,6 +2,8 @@
 
 `HellOS` stands for "Hello, OS!". As its name suggests, it is an OS for learning and practice.
 
+![HelloOS](hellos.png)
+
 ## Roadmap
 
 * 16-bit real mode:
