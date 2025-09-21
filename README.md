@@ -12,9 +12,9 @@
         * Disk OS demo
             * ✓ Two-stage loader
             * Use BIOS services
-                * Print Hello
+                * ✓ Print Hello
                 * Process keyboard input
-            * Override BIOS interrupts (no BIOS service dependency)
+            * Override BIOS interrupts (no BIOS service dependency, in C language)
                 * Print Hello
                 * Process keyboard input
     * UEFI
@@ -25,10 +25,10 @@
             * Use UEFI services
                 * Print Hello
                 * Process keyboard input
-            * `ExitBootServices()`(no UEFI service dependency)
+            * `ExitBootServices()`(no UEFI service dependency, in C language)
                 * Print Hello
                 * Process keyboard input
-    * Disk OS (switch to C language)
+    * Disk OS (in C language)
         * Launched by both legacy BIOS and UEFI (no BIOS or UEFI service dependency)
             * Print Hello
             * Process keyboard input
