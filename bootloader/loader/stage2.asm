@@ -23,24 +23,37 @@ find_bootable_partition:
     call print_string
     jmp $
 
+FAT_TYPE_12 equ 3       ; value indicates bytes per two fat items
+FAT_TYPE_16 equ 4       ;
+FAT_TYPE_32 equ 8       ;
+fat_type db 0           ; FAT_TYPE_*
 check_partition_type:
     xor ah, ah          ; clear AH
     mov al, [si + 4]    ; load partition type byte
     cmp al, 0x01        ; check if FAT12 partition
-    je load_vbr_fat12
+    je .fat12
     cmp al, 0x04        ; check if FAT16 partition (< 65536 sectors)
-    je load_vbr_fat16
+    je .fat16
     cmp al, 0x06        ; check if FAT16B partition (>= 65536 sectors)
-    je load_vbr_fat16
+    je .fat16
     cmp al, 0x0B        ; check if FAT32 partition (CHS)
-    je load_vbr_fat32
+    je .fat32
     cmp al, 0x0C        ; check if FAT32 partition (LBA)
-    je load_vbr_fat32
+    je .fat32
     cmp al, 0x0E        ; check if FAT16B partition (LBA)
-    je load_vbr_fat16
+    je .fat16
     mov si, msg_unsupported_partition
     call print_string
     jmp $
+    .fat12:
+    mov byte [fat_type], FAT_TYPE_12
+    jmp load_vbr
+    .fat16:
+    mov byte [fat_type], FAT_TYPE_16
+    jmp load_vbr
+    .fat32:
+    mov byte [fat_type], FAT_TYPE_32
+    jmp load_vbr
 
 VBR_ADDRESS equ 0xA000
 BYTES_PER_SECTOR equ VBR_ADDRESS + 0x0B
@@ -56,9 +69,6 @@ NUM_HEADS equ VBR_ADDRESS + 0x1A
 HIDDEN_SECTORS equ VBR_ADDRESS + 0x1C
 TOTAL_SECTORS_32 equ VBR_ADDRESS + 0x20
 SECTORS_PER_FAT_32 equ VBR_ADDRESS + 0x24
-; function to load vbr
-; input: SI = pointer to partition entry
-; output: none (loads VBR into memory at 0xA000)
 load_vbr:
     push 0
     push 0
@@ -72,7 +82,7 @@ load_vbr:
     push LBA_PACKET_SIZE
     call bios_load_sector_lba
     add sp, 16
-    jnc .vbr_loaded
+    jnc set_fat_globals
     mov si, msg_failed_to_load_vbr
     call print_string
     jmp $
@@ -80,21 +90,18 @@ load_vbr:
         ret
 
 
-fat_lba dd 0
-fat_bytes_per_2items db 0
+fat_table_lba dd 0
 root_dir_lba dd 0
 root_dir_sectors dw 0
 data_lba dd 0
 
-load_vbr_fat12:
-    call load_vbr
+set_fat_globals:
     mov ax, [si + 8]                ; load starting LBA (4 bytes) into BX:AX
     mov bx, [si + 10]
     add ax, [RESERVED_SECTORS]
     adc bx, 0
-    mov word [fat_lba], ax
-    mov word [fat_lba + 2], bx
-    mov byte [fat_bytes_per_2items], 3  ; FAT12 uses 1.5 bytes per entry, so 3 bytes for 2 entries
+    mov word [fat_table_lba], ax
+    mov word [fat_table_lba + 2], bx
     mov cl, [NUM_FATS]              ; fats count
     .add_fats:
         add ax, [SECTORS_PER_FAT]   ; sectors per fat
@@ -119,17 +126,6 @@ load_vbr_fat12:
     mov word [data_lba], ax
     mov word [data_lba + 2], bx
     jmp load_root_dir
-
-load_vbr_fat16:
-    call load_vbr
-    jmp $   ; TODO
-    jmp load_root_dir
-
-load_vbr_fat32:
-    call load_vbr
-    jmp $   ; TODO
-    jmp load_root_dir
-
 
 ROOT_DIR_LBA equ 0xB000
 load_root_dir:
@@ -197,6 +193,9 @@ find_kernel_file:
         call print_string
         jmp $               ; halt execution if file is too large
 
+FAT_TABLE_ITEMS_EOC_12 equ 0x0FF8
+FAT_TABLE_ITEMS_EOC_16 equ 0xFFF8
+FAT_TABLE_ITEMS_EOC_32 equ 0x0FFFFFF8
 FAT_ADDRESS equ 0xC000
 KERNEL_ADDRESS_SEGMENT equ 0x8000
 KERNEL_ADDRESS_OFFSET equ 0x0000
@@ -239,16 +238,20 @@ load_kernel_file:
         ; set SI to next cluster
         call find_next_cluster
         jc .load_error
-        test si, 1                  ; check if cluster number is odd or even
-        jz .even
-        .odd:
-            shr ax, 4               ; odd cluster, get high 12 bits
-        .even:
-            and ax, 0x0FFF          ; mask to get 12-bit FAT entry
         mov si, ax
-        cmp si, 0x0FF8              ; check for end-of-chain markers
-        jl .next_cluster            ; if not end of chain, load next cluster
-        jmp jump_to_kernel
+        .fat12:
+            cmp bx, FAT_TYPE_12
+            jne .fat16
+            cmp si, FAT_TABLE_ITEMS_EOC_12  ; check for end-of-chain markers
+            jb .next_cluster                ; if not end of chain, load next cluster
+            jmp jump_to_kernel
+        .fat16:
+            cmp bx, FAT_TYPE_16
+            jne .fat32
+            cmp si, FAT_TABLE_ITEMS_EOC_16  ; check for end-of-chain markers
+            jb .next_cluster                ; if not end of chain, load next cluster
+            jmp jump_to_kernel
+        .fat32:
     .load_error:
         mov si, msg_failed_to_load_kernel_file
         call print_string
@@ -261,9 +264,9 @@ jump_to_kernel:
 ; inputs: SI = current cluster number
 ; outputs: DX:AX = next cluster number, CF set on error
 find_next_cluster:
-    ; FAT entry address: fat_lba + cluster * 1.5 / bytes_per_sector
+    ; FAT entry address: fat_table_lba + cluster * fat_type / bytes_per_sector
     mov ax, si
-    movzx bx, byte [fat_bytes_per_2items]
+    movzx bx, byte [fat_type]
     mul bx                      ; dx:ax = cluster * bytes_per_2items = next_cluster_offset * 2
     shr dx, 1
     rcr ax, 1                   ; dx:ax = cluster * bytes_per_items = next_cluster_offset
@@ -271,8 +274,8 @@ find_next_cluster:
     div bx                      ; ax = sector offset, dx = byte offset
     push dx
     xor dx, dx
-    add ax, [fat_lba]
-    adc dx, [fat_lba + 2]
+    add ax, [fat_table_lba]
+    adc dx, [fat_table_lba + 2]
     push 0
     push 0
     push dx
@@ -291,6 +294,15 @@ find_next_cluster:
     mov ax, [si]
     mov dx, [si + 2]
     pop si
+    movzx bx, byte [fat_type]
+    cmp bx, FAT_TYPE_12
+    jnz .end
+    test si, 1                  ; check if cluster number is odd or even
+    jz .even
+    .odd:
+        shr ax, 4               ; odd cluster, get high 12 bits
+    .even:
+        and ax, 0x0FFF          ; mask to get 12-bit FAT entry
     .end:
         ret
 
