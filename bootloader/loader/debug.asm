@@ -19,7 +19,7 @@ debug_print:
             shr al, cl
             and al, 0x0F
             cmp al, 9
-            jg .hex
+            ja .hex
             .digit:
                 add al, '0'
                 jmp .print

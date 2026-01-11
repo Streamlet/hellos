@@ -176,7 +176,7 @@ find_kernel_file:
         ; if we reach here, the filename matches
         mov dx, [si + 0x1E]
         cmp dx, 2           ; max 128K file size (2 sectors of 64K)
-        jg .too_large_file
+        ja .too_large_file
         ; load starting cluster (2 bytes at offset 0x1A)
         mov ax, [si + 0x1A]
         mov [kernel_file_cluster], ax
