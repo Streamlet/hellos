@@ -69,6 +69,7 @@ NUM_HEADS equ VBR_ADDRESS + 0x1A
 HIDDEN_SECTORS equ VBR_ADDRESS + 0x1C
 TOTAL_SECTORS_32 equ VBR_ADDRESS + 0x20
 SECTORS_PER_FAT_32 equ VBR_ADDRESS + 0x24
+ROOT_CLUSTER_FAT32 equ VBR_ADDRESS + 0x2C
 load_vbr:
     push 0
     push 0
@@ -102,9 +103,17 @@ set_fat_globals:
     adc bx, 0
     mov word [fat_table_lba], ax
     mov word [fat_table_lba + 2], bx
+    mov dl, byte [fat_type]
+    cmp dl, FAT_TYPE_32
+    je .fat32_sectors_per_fat
+        mov dx, [SECTORS_PER_FAT]
+        jmp .calc_root_dir
+    .fat32_sectors_per_fat:
+        mov dx, [SECTORS_PER_FAT_32]
+    .calc_root_dir:
     mov cl, [NUM_FATS]              ; fats count
     .add_fats:
-        add ax, [SECTORS_PER_FAT]   ; sectors per fat
+        add ax, dx   ; sectors per fat
         adc bx, 0
         dec cl
     jnz .add_fats
@@ -125,6 +134,20 @@ set_fat_globals:
     adc bx, 0
     mov word [data_lba], ax
     mov word [data_lba + 2], bx
+    mov dl, byte [fat_type]
+    cmp dl, FAT_TYPE_32
+    jne load_root_dir
+    mov ax, [ROOT_CLUSTER_FAT32]
+    mov bx, [ROOT_CLUSTER_FAT32 + 2]
+    sub ax, 2
+    sbb bx, 0
+    mov cl, [SECTORS_PER_CLUSTER]
+    mul cl
+    add ax, [data_lba]
+    adc bx, [data_lba + 2]
+    mov word [root_dir_lba], ax
+    mov word [root_dir_lba + 2], bx
+    mov word [root_dir_sectors], 1
     jmp load_root_dir
 
 ROOT_DIR_LBA equ 0xB000
@@ -195,7 +218,7 @@ find_kernel_file:
 
 FAT_TABLE_ITEMS_EOC_12 equ 0x0FF8
 FAT_TABLE_ITEMS_EOC_16 equ 0xFFF8
-FAT_TABLE_ITEMS_EOC_32 equ 0x0FFFFFF8
+FAT_TABLE_ITEMS_EOC_32_HI equ 0x0FFF
 FAT_ADDRESS equ 0xC000
 KERNEL_ADDRESS_SEGMENT equ 0x8000
 KERNEL_ADDRESS_OFFSET equ 0x0000
@@ -242,16 +265,19 @@ load_kernel_file:
         .fat12:
             cmp bx, FAT_TYPE_12
             jne .fat16
-            cmp si, FAT_TABLE_ITEMS_EOC_12  ; check for end-of-chain markers
-            jb .next_cluster                ; if not end of chain, load next cluster
+            cmp ax, FAT_TABLE_ITEMS_EOC_12  ; check for end-of-chain markers
+            jne .next_cluster               ; if not end of chain, load next cluster
             jmp jump_to_kernel
         .fat16:
+            cmp ax, FAT_TABLE_ITEMS_EOC_16  ; check for end-of-chain markers
+            jne .next_cluster                ; if not end of chain, load next cluster
             cmp bx, FAT_TYPE_16
             jne .fat32
-            cmp si, FAT_TABLE_ITEMS_EOC_16  ; check for end-of-chain markers
-            jb .next_cluster                ; if not end of chain, load next cluster
             jmp jump_to_kernel
         .fat32:
+            cmp dx, FAT_TABLE_ITEMS_EOC_32_HI; check for end-of-chain markers
+            jne .next_cluster                ; if not end of chain, load next cluster
+            jmp jump_to_kernel
     .load_error:
         mov si, msg_failed_to_load_kernel_file
         call print_string
