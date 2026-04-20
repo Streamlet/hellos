@@ -1,23 +1,44 @@
+; A simple bootloader that prints "Hello, OS!" to the screen.
+
+%ifdef KERNEL
+org 0x0000  ; the kernel is loaded at 0x????:0x0000
+%else
 org 0x7C00  ; the standard bootloader load address
+%endif
 bits 16     ; 16-bit real mode
 
+; initialization
+
 init_registers:
-    xor ax, ax
+    mov ax, cs
     mov ds, ax
     mov ss, ax
+%ifdef KERNEL
+    mov sp, 0
+%else
     mov sp, 0x7C00
+%endif
+
+; if KERNEL is defined, padding the file to 1 cluster (16 sectors) and jump to main
+%ifdef KERNEL
+jmp main
+times 512 * 16 - ($ - $$) db 0 ; make the file at least 1 cluster (16 sectors)
+%endif
 
 clean_screen:
     mov ax, 0x0003          ; AH=00h, AL=03h (mode 3: 80x25 text), reset video mode to clear screen
     int 0x10
 
-print_hello:
+; main routine
+
+main:
     mov si, msg_hello       ; load address of msg into SI
-    call print_string
+    call bios_print
 
 run_loop:
     mov si, prompt          ; load address of prompt into SI
-    call print_string       ; print prompt
+    call bios_print         ; print prompt
+    mov di, buffer          ; load address of input buffer into DI
     call read_line          ; read a line of input from keyboard
 
     mov si, buffer          ; load address of input buffer into SI
@@ -31,12 +52,17 @@ run_loop:
     jz bios_reboot          ; if equal, jump to reboot
 
     mov si, msg_bad_cmd     ; load address of bad command message into SI
-    call print_string       ; print bad command message
+    call bios_print         ; print bad command message
     mov si, crlf            ; load crlf
-    call print_string       ; print crlf
+    call bios_print         ; print crlf
     jmp run_loop            ; repeat the loop
 
-; function to compare two null-terminated strings
+; functions
+; callee-saved registers: BP, DS
+; caller-saved registers: AX, BX, CX, DX, SI, DI, ES
+; return value: AX (16-bit), DX:AX (32-bit)
+
+; compare two null-terminated strings
 ; input: SI points to first string, DI points to second string
 ; output: ZF set if equal, clear if not equal
 strcmp:
@@ -52,11 +78,10 @@ strcmp:
     .end:   
         ret
 
-; function to read a line of input from the keyboard
-; input: none
+; read a line of input from the keyboard
+; input: DI=buffer
 ; output: buffer contains the input string, null-terminated
 read_line:
-    mov di, buffer          ; DI points to the start of the buffer
     .input_loop:
         call read_key       ; read a key from keyboard, result in AL
         test al, al         ; check for non-ascii keys
@@ -85,23 +110,23 @@ read_line:
         call print_char     ; print newline
         ret
 
-; function to read a key from the keyboard
+; read a key from the keyboard
 ; output: AL = ASCII code of the key pressed, AH = scan code
 read_key:
     mov ah, 0x00    ; BIOS keyboard function to read a key
     int 0x16        ; call BIOS keyboard interrupt
     ret
 
-; function to print a single character in AL at the current cursor position
+; print a single character in AL at the current cursor position
 ; input: AL = character to print
 print_char:
     mov ah, 0x0E    ; BIOS teletype function to print character in AL
     int 0x10        ; call BIOS video interrupt to print character in AL
     ret
 
-; function to print a null-terminated string at the current cursor position
+; print a null-terminated string at the current cursor position
 ; input: DS:SI points to the string
-print_string:
+bios_print:
     mov ah, 0x0E    ; bios teletype function to print character in AL
     .loop:
         lodsb           ; AL = [DS:SI], SI++
@@ -112,26 +137,35 @@ print_string:
     .end:
         ret
 
-; function to shutdown the system
+; shutdown the system
 bios_shutdown:
     mov ax, 0x5307  ; BIOS function to power off the system
     mov bx, 0x0001  ; power off
     mov cx, 0x0003  ; soft off
     int 0x15        ; call BIOS interrupt
 
-; function to reboot the system
+;  reboot the system
 bios_reboot:
     mov ax, 0x0000  ; BIOS function to reboot the system
     int 0x19        ; call BIOS interrupt
 
-; predefined strings
+; data
+
+; strings
+%ifdef KERNEL
+msg_hello db 'Kernel loaded!', 0x0D, 0x0A, 0x0D, 0x0A, 0
+%else
 msg_hello db 'Hello, OS!', 0x0D, 0x0A, 0x0D, 0x0A, 0
-msg_bad_cmd db 'bad command', 0
+%endif
+msg_bad_cmd db 'Bad command.', 0x0D, 0x0A, 'Available commands: shutdown, reboot', 0
 prompt db '>', 0
 crlf db 0x0D, 0x0A, 0
 cmd_shutdown db 'shutdown', 0
 cmd_reboot db 'reboot', 0
 buffer db 128 dup(0) ; buffer to hold input string, max 128 characters
-
-times 510 - ($ - $$) db 0 ; fill with 0 until the 510th byte
-dw 0xAA55                 ; last two bytes are the boot signature
+%ifndef KERNEL ; if KERNEL is defined, padding is done before
+; padding
+times 510 - ($ - $$) db 0
+; boot signature (last two bytes must be 0xAA55)
+dw 0xAA55
+%endif
