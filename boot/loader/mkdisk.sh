@@ -3,12 +3,25 @@
 type=$1
 if [ -z "$type" ]; then
     echo "Usage: $0 <type>"
-    echo 'Types: 1=FAT12, 4=FAT16, 6=FAT16B, b=FAT32, c=FAT32LBA, e=FAT16LBA'
+    echo '  types: 1=FAT12, 4=FAT16, 6=FAT16B, b=FAT32, c=FAT32LBA, e=FAT16LBA'
     exit 1
 fi
 
-dd if=/dev/zero of=disk.img bs=512 count=65536
-fdisk disk.img << EOF
+if ! command -v fdisk >/dev/null 2>&1 || ! command -v mkfs.fat >/dev/null 2>&1 || ! command -v mcopy >/dev/null 2>&1; then
+    if ! command -v fdisk >/dev/null 2>&1; then
+        echo 'fdisk is required but not found. Please install util-linux.'
+    fi
+    if ! command -v mkfs.fat >/dev/null 2>&1; then
+        echo 'mkfs.fat is required but not found. Please install dosfstools.'
+    fi
+    if ! command -v mcopy >/dev/null 2>&1; then
+        echo 'mcopy is required but not found. Please install mtools.'
+    fi
+    exit 1
+fi
+
+dd if=/dev/zero of=disk.img bs=512 count=65536 > /dev/null 2>&1
+fdisk disk.img > /dev/null 2>&1 << EOF
 n
 p
 1
@@ -19,18 +32,17 @@ t
 $type
 w
 EOF
-dd if=disk.img of=partition.img bs=512 skip=2048
-# yum install -y dosfstools
+dd if=disk.img of=partition.img bs=512 skip=2048 > /dev/null 2>&1
 case $type in
-    1) mkfs.fat -F 12 partition.img ;;
-    4|6|e) mkfs.fat -F 16 partition.img ;;
-    b|c) mkfs.fat -F 32 partition.img ;;
+    1) mkfs.fat -F 12 partition.img > /dev/null 2>&1;;
+    4|6|e) mkfs.fat -F 16 partition.img > /dev/null 2>&1;;
+    b|c) mkfs.fat -F 32 partition.img > /dev/null 2>&1;;
     *) echo "Unsupported type $type"; exit 1 ;;
 esac
 # yum install -y mtools
 mcopy -i partition.img kernel.bin ::/KERNEL.BIN
-dd if=stage1.bin of=disk.img bs=512 seek=0 conv=notrunc
-printf '\x55\xAA' | dd of=disk.img bs=1 seek=510 count=2 conv=notrunc
-dd if=stage2.bin of=disk.img bs=512 seek=1 conv=notrunc
-dd if=partition.img of=disk.img bs=512 seek=2048 conv=notrunc
+dd if=stage1.bin of=disk.img bs=512 seek=0 conv=notrunc > /dev/null 2>&1
+printf '\x55\xAA' | dd of=disk.img bs=1 seek=510 count=2 conv=notrunc > /dev/null 2>&1
+dd if=stage2.bin of=disk.img bs=512 seek=1 conv=notrunc > /dev/null 2>&1
+dd if=partition.img of=disk.img bs=512 seek=2048 conv=notrunc > /dev/null 2>&1
 #rm -f partition.img
