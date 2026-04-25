@@ -5,45 +5,58 @@ bits 16     ; 16-bit real mode
 
 ; initialization
 
+start:
+    ; Some BIOSes load the bootloader with a non-zero segment, which can cause issues when accessing data with hardcoded offsets
+    jmp 0x0000:init_registers   ; force cs to be 0; 
+
 init_registers:
     mov ax, cs
     mov ds, ax
+    mov es, ax
     mov ss, ax
-    mov sp, 0x7C00
+    mov sp, start
 
-clean_screen:
-    mov ax, 0x0003  ; AH=00h, AL=03h (mode 3: 80x25 text), reset video mode to clear screen
-    int 0x10
 
 ; main routine
 
 main:
-    mov si, msg     ; load address of msg into SI
-    call bios_print
+    call bios_clean_screen  ; clear the screen
+    mov si, msg_hello       ; load address of hello message into SI
+    call bios_print_string  ; print the hello message
+    jmp $                   ; infinite loop to halt the system
 
 ; functions
-; callee-saved registers: BP, DS
-; caller-saved registers: AX, BX, CX, DX, SI, DI, ES
+; caller-saved registers: AX, CX, DX
+; callee-saved registers: The rests
 ; return value: AX (16-bit), DX:AX (32-bit)
 
 ; print a null-terminated string at the current cursor position
 ; input: DS:SI points to the string
-bios_print:
+bios_print_string:
     mov ah, 0x0E    ; bios teletype function to print character in AL
     .loop:
-        lodsb           ; AL = [DS:SI], SI++
-        test al, al     ; test for null terminator
-        je .end         ; if zero, end of string, jump to end
-        int 0x10        ; call BIOS video interrupt to print character in AL
-        jmp .loop       ; repeat for next character
+        lodsb       ; AL = [DS:SI], SI++
+        test al, al ; test for null terminator
+        je .end     ; if zero, end of string, jump to end
+        int 0x10    ; call BIOS video interrupt to print character in AL
+        jmp .loop   ; repeat for next character
     .end:
         ret
+
+; clean screen by resetting video mode
+bios_clean_screen:
+    mov ax, 0x0003  ; AH=00h, AL=03h (mode 3: 80x25 text), reset video mode to clear screen
+    int 0x10
+    ret
+
 
 ; data
 
 ; strings
-msg db 'Hello, OS!', 0x0D, 0x0A, 0
+msg_hello db 'Hello, OS!', 0x0D, 0x0A, 0
+
 ; padding
 times 510 - ($ - $$) db 0
+
 ; boot signature (last two bytes must be 0xAA55)
 dw 0xAA55
