@@ -1,17 +1,57 @@
-%macro DEBUG_PRINT 1
-    mov [debug_buffer], %1
-    call debug_print
+%ifndef __DEBUG_ASM_INCLUDED__
+%define __DEBUG_ASM_INCLUDED__
+
+%macro DEBUG_LOG 1
+    push si
+    mov si, %%debug_log_msg
+    call debug_print_string
+    pop si
+    jmp %%debug_log_end
+%%debug_log_msg db %1, 0x0D, 0x0A, 0
+%%debug_log_end:
 %endmacro
 
-jmp debug_print_end
+%macro DEBUG_REG 2
+    push si
+    push cx
+    mov [%%debug_reg_buffer], %1
+    mov si, %%debug_reg_buffer
+    mov cl, %2
+    call debug_print_buffer
+    pop cx
+    pop si
+    jmp %%debug_reg_end
+%%debug_reg_buffer db 0, 0, 0, 0
+%%debug_reg_end:
+%endmacro
+
+
+jmp debug_end
+
+; function to print a null-terminated string at the current cursor position
+; input: DS:SI points to the string
+debug_print_string:
+    pushf
+    pusha
+    mov ah, 0x0E        ; bios teletype function to print character in AL
+    .loop:
+        lodsb           ; AL = [DS:SI], SI++
+        test al, al     ; test for null terminator
+        je .end         ; if zero, end of string, jump to halt
+        int 0x10        ; call BIOS video interrupt to print character in AL
+        jmp .loop       ; repeat for next character
+    .end:
+    popa
+    popf
+    ret
 
 ; 16 byte buffer for debug print
-debug_buffer times 16 db 0  ; Reserve 16 bytes for the debug buffer
-debug_print:
+; input: SI=buffer, CL=number of bytes to print
+debug_print_buffer:
+    pushf
     pusha
     mov ah, 0x0E
-    mov ch, 16
-    mov si, debug_buffer
+    mov ch, cl
     .loop_bytes:
         mov cl, 4
         .loop_chars:
@@ -29,9 +69,8 @@ debug_print:
             .print:
                 int 0x10
                 cmp cl, 0
-                jz .byte_done
+                je .byte_done
                 xor cl, cl
-                and al, 0x0F
                 jmp .loop_chars
         .byte_done:
             inc si
@@ -45,7 +84,10 @@ debug_print:
         int 0x10
         mov al, 0x0A
         int 0x10
-        popa
-        ret
+    popa
+    popf
+    ret
 
-debug_print_end:
+debug_end:
+
+%endif  ; __DEBUG_ASM_INCLUDED__
