@@ -10,7 +10,7 @@
 
 * Shell:  Bash on Linux/WSL or MSYS2/MinGW on Windows
 * Assemble: NASM
-* C Compile: GCC
+* C Compile: OpenWatcom (16-bit), GCC(32-bit)
 * Disk Tools: `fdisk` (from util-linux), `mkfs.fat` (from dosfstools), `mcopy`(from mtools)
 * VM: QEMU
 
@@ -42,7 +42,7 @@ cd boot/hello
         * ✓ Load kernel file
         * ✓ Interactive Console
 * 16-bit Real Mode:
-    * Hello in C Language
+    * ✓ Hello in C Language
     * Interactive Console in C Language
         * Override VGA Text Mode Driver (Replace int 10h)
         * Override PS/2 Keyboard Driver (Replace int 16h)
