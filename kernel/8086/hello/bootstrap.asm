@@ -13,6 +13,7 @@ _start:
     mov ss, ax
     mov sp, _start
     call _kernel_main
+    jmp $
 
 global _small_code_
 _small_code_:
