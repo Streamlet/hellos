@@ -5,4 +5,4 @@ nasm -f bin -i ../../../boot/two-stage/ ../../../boot/two-stage/stage2.asm -o st
 
 nasm -f obj bootstrap.asm -o bootstrap.obj
 wcc -0 -s -os -d0 -ecc -ms -zastd=c99 -fo=kernel.obj kernel.c
-wlink format raw bin name kernel.bin option nodefaultlibs option eliminate option offset=0x80000 option start=_start file bootstrap.obj,kernel.obj
+wlink format raw bin name kernel.bin option nodefaultlibs option eliminate option offset=0x88000 option start=_start file bootstrap.obj,kernel.obj

@@ -37,6 +37,8 @@ main:
     mov dx, [si + fat_dir_entry.file_size + 2]
     cmp dx, 0
     jne .error_file_too_large
+    cmp ax, 0x8000 ; compare with 32K
+    ja .error_file_too_large
 
     ; load kernel file
     mov di, KERNEL_ADDRESS_SEGMENT
@@ -122,5 +124,5 @@ msg_failed_to_load_vbr db 'Error: failed to load VBR.', 0x0D, 0x0A, 0
 msg_failed_to_load_root_dir db 'Error: failed to load root directory.', 0x0D, 0x0A, 0
 msg_failed_to_load_fat db 'Error: failed to load fat.', 0x0D, 0x0A, 0
 msg_kernel_file_not_found db 'Error: kernel file not found.', 0x0D, 0x0A, 0
-msg_kernel_file_too_large db 'Error: kernel file larger than 64K.', 0x0D, 0x0A, 0
+msg_kernel_file_too_large db 'Error: kernel file larger than 32K.', 0x0D, 0x0A, 0
 msg_failed_to_load_kernel_file db 'Error: failed to load kernel file.', 0x0D, 0x0A, 0
