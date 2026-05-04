@@ -1,3 +1,3 @@
 #!/bin/sh
 
-qemu-system-x86_64 -drive format=raw,file=disk.img
+qemu-system-i386 -drive format=raw,file=disk.img
