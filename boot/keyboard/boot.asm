@@ -32,7 +32,9 @@ times 512 * 16 - ($ - $$) db 0 ; make the file at least 1 cluster (16 sectors)
 ; main routine
 
 main:
+%ifndef KERNEL
     call bios_clean_screen  ; clear the screen
+%endif
     mov si, msg_hello       ; load hello message into SI
     call bios_print_string  ; print the hello message
 
