@@ -1,11 +1,16 @@
 #!/bin/sh
 
-type=$1
-if [ -z "$type" ]; then
+if [ "$1" = "-h" ]; then
     echo "Usage: $0 <type>"
     echo '  types: 1=FAT12, 4=FAT16, 6=FAT16B, b=FAT32, c=FAT32LBA, e=FAT16LBA'
-    exit 1
+    exit 0
 fi
+
+type=$1
+case $type in
+    1|4|6|b|c|e) ;;
+    *) type=b ;;
+esac
 
 if ! command -v fdisk >/dev/null 2>&1 || ! command -v mkfs.fat >/dev/null 2>&1 || ! command -v mcopy >/dev/null 2>&1; then
     if ! command -v fdisk >/dev/null 2>&1; then
