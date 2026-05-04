@@ -4,6 +4,31 @@
 
 ![HelloOS](hellos.png)
 
+## Getting Started
+
+### Environment
+
+* Shell:  Bash on Linux/WSL or MSYS2/MinGW on Windows
+* Assemble: NASM
+* C Compile: GCC
+* Disk Tools: `fdisk` (from util-linux), `mkfs.fat` (from dosfstools), `mcopy`(from mtools)
+* VM: QEMU
+
+### Steps
+
+ 1. Go to a target directory (e.g. `boot/hello`).
+ 2. Run `build.sh`. This will assemble the .asm files and compile any .c files, producing the necessary binary files (.bin, etc.).
+ 3. If `mkdisk.sh` exists, run it. This will create the virtual disk images (.img files) needed for booting.
+ 4. Run `run.sh`. This will start QEMU and boot the target Bootloader/OS.
+
+Example using `boot/hello`:
+
+```sh
+cd boot/hello
+./build.sh
+./run.sh
+```
+
 ## Roadmap
 
 * Bootloader (MBR)
