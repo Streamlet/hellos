@@ -1,4 +1,4 @@
-; A simple bootloader that prints "Hello, OS!" to the screen and handles basic keyboard input.
+; A simple bootloader that prints "Hello, Shell!" to the screen and handles basic keyboard input.
 ; When KERNEL is defined, it becomes a simple kernel that prints "Kernel loaded!"
 
 %ifdef KERNEL
@@ -34,9 +34,9 @@ times 512 * 16 - ($ - $$) db 0 ; make the file at least 1 cluster (16 sectors)
 main:
 %ifndef KERNEL
     call bios_clean_screen  ; clear the screen
-%endif
     mov si, msg_hello       ; load hello message into SI
     call bios_print_string  ; print the hello message
+%endif
 
 cmd_loop:
     mov si, prompt          ; load prompt message into SI
@@ -160,10 +160,8 @@ bios_reboot:
 ; data
 
 ; strings
-%ifdef KERNEL
-msg_hello       db 'Kernel loaded!', 0x0D, 0x0A, 0x0D, 0x0A, 0
-%else
-msg_hello       db 'Hello, OS!', 0x0D, 0x0A, 0x0D, 0x0A, 0
+%ifndef KERNEL
+msg_hello       db 'Hello, Shell!', 0x0D, 0x0A, 0x0D, 0x0A, 0
 %endif
 msg_bad_cmd     db 'Bad command.', 0x0D, 0x0A, 'Available commands: shutdown, reboot', 0x0D, 0x0A, 0
 prompt          db '>', 0

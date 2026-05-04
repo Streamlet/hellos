@@ -80,7 +80,7 @@ bios_load_sector_chs:
 ; data
 
 ; strings
-msg_loading         db 'Welcome to HellOS!', 0x0D, 0x0A, 0x0D, 0x0A, 'Loading kernel...', 0x0D, 0x0A, 0
+msg_loading         db 'Welcome to HellOS!', 0x0D, 0x0A, 0x0D, 0x0A, 0
 msg_loading_error   db 'Error reading sectors. Disk too small?', 0x0D, 0x0A, 0
 
 ; padding
