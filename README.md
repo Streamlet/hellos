@@ -6,37 +6,44 @@
 
 ## Roadmap
 
-* 16-bit real mode:
-    * Bootloader OS (MBR)
-        * ✓ Print Hello 
-        * ✓ Process keyboard input (Echo, Reboot, Shutdown)
-        * ✓ Two-stage loader
+* Bootloader (MBR)
+    * ✓ Print Hello 
+    * ✓ Interactive Console (Echo, `shutdown`, `reboot`)
+    * ✓ Two-stage loader
+        * ✓ FAT driver (Read Only & Root Dir Only)
+            * ✓ FAT 12
+            * ✓ FAT 16
+            * ✓ FAT 32
         * ✓ Load kernel file
-            * ✓ Print Hello
-            * ✓ Process keyboard input
-    * Disk OS (in C language)
-        * Override BIOS services
-            * VGA text mode driver (replace int 10h)
-            * PS/2 keyboard driver (replace int 16h)
-            * ACPI driver (replace int 15h and int 19h)
-        * File system driver
-            * Disk driver (replace int 13h)
-            * FAT 12/16/32 driver
-        * Implement a simple shell
-        * Implement Tetris game (0xB8000 text mode or 0xA0000 graphic mode)
-* 16-bit protected mode
-    * Print Hello in Ring 3
-    * Process I/O interrupts
-    * Override BIOS/UEFI services
-    * HAL and System calls, implement Display/Keyboard/ACPI APIs
-    * File system driver and file APIs
-    * Implement a simple shell
-    * Implement Tetris game
-    * Multiple processes/threads
+        * ✓ Interactive Console
+* 16-bit Real Mode:
+    * Hello in C Language
+    * Interactive Console in C Language
+        * Override VGA Text Mode Driver (Replace int 10h)
+        * Override PS/2 Keyboard Driver (Replace int 16h)
+        * Override System & Power Services (Replace int 15h/19h)
+        * Override Disk Driver (Replace int 13h)
+    * Shell with File System Commands (`cat`, `echo >`, `touch`, `ls`, `cd`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`)
+        * FAT Driver (Read & Write)
+* 16-bit Protected Mode
+    * Hello in Ring 3
+        * IO Interrupts
+        * Memory Management
+        * Process Context (Single Process)
+        * System Call
+    * Interactive Console in Ring 3
+    * Shell with File System Commands in Ring 3
+* 32-bit Protected Mode
+    * Hello
+        * Process with Memory Paging
+    * Interactive Console in Ring 3
+    * Shell with File System Commands in Ring 3
+    * Shell with External Command
         * Cooperative Multitasking
-        * Preemptive multitasking
-* 32-bit protected mode
-    * (almost same as in '16-bit protected mode', pay attention to memory paging)
-* UEFI Support
-* 64-bit long mode
-    * (almost same as in '32-bit protected mode', pay attention to 32-bit compatibility mode)
+        * Preemptive Multitasking
+* 64-bit Long Mode
+    * Hello
+    * Interactive Console in Ring 3
+    * Shell with File System Commands in Ring 3
+    * Shell with External Command
+    * UEFI Support
