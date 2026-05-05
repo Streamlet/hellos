@@ -1,12 +1,18 @@
 #include "hal.h"
+#include "int.h"
 
-void print_string(const char* s) {
-  for (const char* p = s; *p != '\0'; p++) {
+void print_string(const char *s) {
+  for (const char *p = s; *p != '\0'; p++) {
     vga_text_putc(*p);
   }
 }
 
-void kernel_main() {
-  char* message = "\r\nHello, Kernel!\r\n";
+void _kernel_main() {
+  init_ivt();
+  char *message = "\r\nHello, Kernel!\r\n";
   print_string(message);
+}
+
+void _isr_entry(unsigned short int_num) {
+  handle_interrupt(int_num);
 }

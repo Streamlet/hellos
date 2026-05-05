@@ -2,3 +2,5 @@
 *.bin
 *.img
 *.obj
+*.lst
+*.err
