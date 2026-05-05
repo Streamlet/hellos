@@ -8,7 +8,7 @@ void print_string(const char *s) {
 }
 
 void _kernel_main() {
-  init_ivt();
+  enable_irq(1);
   char *message = "\r\nHello, Kernel!\r\n";
   print_string(message);
 }

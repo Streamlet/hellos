@@ -53,60 +53,52 @@ void panic(const char *s) {
 
 void handle_cpu_exception(unsigned char int_num) {
   const char *messages[] = {
-      "#00: Divided by zero",
-      "#01: Debug exception",
-      "#02: Non-maskable interrupt",
-      "#03: Breakpoint",
-      "#04: Overflow",
-      "#05: BOUND range exceeded",
-      "#06: Invalid opcode",
-      "#07: FPU not available",
-      "#08: Double fault",
-      "#09: Coprocessor segment overrun",
-      "#0A: Invalid TSS",
-      "#0B: Segment not present",
-      "#0C: Stack segment fault",
-      "#0D: General protection fault",
-      "#0E: Page fault",
-      "#0F: Reserved exception",
-      "#10: FPU floating-point error",
-      "#11: Alignment check",
-      "#12: Machine check",
-      "#13: SIMD FP exception",
-      "#14: Reserved exception",
-      "#15: Reserved exception",
-      "#16: Reserved exception",
-      "#17: Reserved exception",
-      "#18: Reserved exception",
-      "#19: Reserved exception",
-      "#1A: Reserved exception",
-      "#1B: Reserved exception",
-      "#1C: Reserved exception",
-      "#1D: Reserved exception",
-      "#1E: Reserved exception",
-      "#1F: Reserved exception",
+      "Error#00: Divided By Zero",
+      "Error#01: Debug Exception",
+      "Error#02: Non-maskable Interrupt",
+      "Error#03: Breakpoint",
+      "Error#04: Overflow",
+      "Error#05: BOUND Range Exceeded",
+      "Error#06: Invalid Opcode",
+      "Error#07: FPU Not Available",
+      "Error#08: Double Fault",
+      "Error#09: Coprocessor Segment Overrun",
+      "Error#0A: Invalid TSS",
+      "Error#0B: Segment Not Present",
+      "Error#0C: Stack Segment Fault",
+      "Error#0D: General Protection Fault",
+      "Error#0E: Page Fault",
+      "Error#0F: Reserved Exception",
+      "Error#10: FPU Floating-Point Error",
+      "Error#11: Alignment Check",
+      "Error#12: Machine Check",
+      "Error#13: SIMD FP Exception",
+      "Error#14: Reserved Exception",
+      "Error#15: Reserved Exception",
+      "Error#16: Reserved Exception",
+      "Error#17: Reserved Exception",
+      "Error#18: Reserved Exception",
+      "Error#19: Reserved Exception",
+      "Error#1A: Reserved Exception",
+      "Error#1B: Reserved Exception",
+      "Error#1C: Reserved Exception",
+      "Error#1D: Reserved Exception",
+      "Error#1E: Reserved Exception",
+      "Error#1F: Reserved Exception",
   };
   panic(messages[int_num]);
 }
 
 void handle_irq(unsigned char irq_num) {
   const char *messages[] = {
-      "#IRQ 0: System Timer",
-      "#IRQ 1: Keyboard",
-      "#IRQ 2: Cascade (Slave PIC)",
-      "#IRQ 3: COM2/COM4",
-      "#IRQ 4: COM1/COM3",
-      "#IRQ 5: LPT2/Sound",
-      "#IRQ 6: Floppy Disk",
-      "#IRQ 7: LPT1",
-      "#IRQ 8: Real-Time Clock",
-      "#IRQ 9: Redirect to IRQ2",
-      "#IRQ 10: Reserved/Free",
-      "#IRQ 11: Reserved/Free",
-      "#IRQ 12: PS/2 Mouse",
-      "#IRQ 13: FPU Error",
-      "#IRQ 14: Primary IDE Channel",
-      "#IRQ 15: Secondary IDE Channel",
+      "IRQ#00: Unhandled System Timer Interrupt",        "IRQ#01: Unhandled Keyboard Interrupt",
+      "IRQ#02: Unhandled Cascade (Slave PIC) Interrupt", "IRQ#03: Unhandled COM2/COM4 Interrupt",
+      "IRQ#04: Unhandled COM1/COM3 Interrupt",           "IRQ#05: Unhandled LPT2/Sound Interrupt",
+      "IRQ#06: Unhandled Floppy Disk Interrupt",         "IRQ#07: Unhandled LPT1 Interrupt",
+      "IRQ#08: Unhandled Real-Time Clock Interrupt",     "IRQ#09: Unhandled Redirect to IRQ2 Interrupt",
+      "IRQ#0A: Unhandled Reserved/Free Interrupt",       "IRQ#0B: Unhandled Reserved/Free Interrupt",
+      "IRQ#0C: Unhandled PS/2 Mouse Interrupt",          "IRQ#0D: Unhandled FPU Error Interrupt",
+      "IRQ#0E: Unhandled Primary IDE Channel Interrupt", "IRQ#0F: Unhandled Secondary IDE Channel Interrupt",
   };
   panic(messages[irq_num]);
 }
@@ -125,30 +117,6 @@ void disable_irq(unsigned char irq_num) {
   } else {
     _outb(0xA1, _inb(0xA1) | (1 << (irq_num - 8)));
   }
-}
-
-void remap_pic() {
-  // Remap PIC: IRQ0-7 to INT 0x20-0x27, IRQ8-15 to INT 0x28-0x2f
-  // Master PIC
-  _outb(0x20, 0x11); // Start initialization in cascade mode
-  _outb(0x21, 0x20); // Master PIC vector offset
-  _outb(0x21, 0x04); // Tell Master PIC that there is a slave PIC at IRQ2
-  _outb(0x21, 0x01); // Set Master PIC to 8086 mode
-  _outb(0x21, 0xFF); // Disable all IRQs on Master PIC
-  // Slave PIC
-  _outb(0xA0, 0x11); // Start initialization in cascade mode
-  _outb(0xA1, 0x28); // Slave PIC vector offset
-  _outb(0xA1, 0x02); // Tell Slave PIC its cascade identity
-  _outb(0xA1, 0x01); // Set Slave PIC to 8086 mode
-  _outb(0xA1, 0xFF); // Disable all IRQs on Slave PIC
-}
-
-void init_ivt() {
-  _clr_int();
-  remap_pic();
-  _rst_ivt();
-  enable_irq(1);
-  _set_int();
 }
 
 void handle_interrupt(unsigned char int_num) {

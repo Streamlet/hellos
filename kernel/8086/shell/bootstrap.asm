@@ -13,6 +13,7 @@ _start:
     mov es, ax
     mov ss, ax
     mov sp, _start
+    call init_ivt
     call __kernel_main
     jmp $
 
@@ -24,16 +25,6 @@ global __halt
 __halt:
     cli
     hlt
-
-global __clr_int
-__clr_int:
-    cli
-    ret
-
-global __set_int
-__set_int:
-    sti
-    ret
 
 global __inb
 __inb:
@@ -74,6 +65,64 @@ __outw:
     pop bp
     ret
 
+init_ivt:
+    cli
+    call remap_pic
+    call reset_ivt
+    sti
+    ret
+
+remap_pic:
+    ; remap PIC: IRQ0-7 to INT 0x20-0x27, IRQ8-15 to INT 0x28-0x2f
+    ; master PIC
+    mov dx, 0x20
+    mov al, 0x11
+    out dx, al ; start initialization in cascade mode
+    mov dx, 0x21
+    mov al, 0x20
+    out dx, al ; master PIC vector offset
+    mov al, 0x04
+    out dx, al ; tell master PIC that there is a slave PIC at IRQ2
+    mov al, 0x01
+    out dx, al ; set master PIC to 8086 mode
+    mov al, 0xFF
+    out dx, al ; disable all IRQs on master PIC
+    ; slave PIC
+    mov dx, 0xA0
+    mov al, 0x11
+    out dx, al ; start initialization in cascade mode
+    mov dx, 0xA1
+    mov al, 0x28
+    out dx, al ; slave PIC vector offset
+    mov al, 0x02
+    out dx, al ; tell slave PIC its cascade identity
+    mov al, 0x01
+    out dx, al ; set slave PIC to 8086 mode
+    mov al, 0xFF
+    out dx, al ; disable all IRQs on slave PIC
+    ret
+
+reset_ivt:
+    push es
+    push si
+    push bx
+    xor bx, bx
+    mov es, bx
+    mov si, isr_stub_table
+    mov cx, 48
+    .loop:
+        mov ax, [si]
+        mov [es:bx], ax
+        mov ax, cs
+        mov [es:bx+2], ax
+        add bx, 4
+        add si, 2
+        loop .loop
+    pop bx
+    pop si
+    pop es
+    ret
+
 isr_stub:
     ; isr_stub_* will push the interrupt number onto the stack before jumping here
     pusha   ; 8 general-purpose registers
@@ -112,27 +161,6 @@ isr_stub_%+i:
 %assign i i+1
 %endrep
 
-global __rst_ivt
-__rst_ivt:
-    push es
-    push si
-    push bx
-    xor bx, bx
-    mov es, bx
-    mov si, isr_stub_table
-    mov cx, 48
-    .loop:
-        mov ax, [si]
-        mov [es:bx], ax
-        mov ax, cs
-        mov [es:bx+2], ax
-        add bx, 4
-        add si, 2
-        loop .loop
-    pop bx
-    pop si
-    pop es
-    ret
 
 section .data
 
