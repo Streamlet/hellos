@@ -68,6 +68,7 @@ __outw:
 init_ivt:
     cli
     call remap_pic
+    call setup_pit
     call reset_ivt
     sti
     ret
@@ -121,6 +122,17 @@ reset_ivt:
     pop bx
     pop si
     pop es
+    ret
+
+setup_pit:
+    ; set PIT channel 0 to mode 3 (square wave generator) with a frequency of 100Hz
+    mov dx, 0x43
+    mov al, 0x36
+    out dx, al  ; control word: channel 0, access mode lobyte/hibyte, mode 3, binary
+    mov dx, 0x40
+    xor al, al  ; divisor (1193180 / 65536 ≈ 18.2Hz)
+    out dx, al  ; low byte
+    out dx, al  ; high byte
     ret
 
 isr_stub:
