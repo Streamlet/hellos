@@ -26,6 +26,16 @@ __halt:
     cli
     hlt
 
+global __disable
+__disable:
+    cli
+    ret
+
+global __enable
+__enable:
+    sti
+    ret
+
 global __inb
 __inb:
     push bp
