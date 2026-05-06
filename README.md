@@ -16,15 +16,15 @@
 
 ### Steps
 
- 1. Go to a target directory (e.g. `boot/hello`).
+ 1. Go to a target directory (e.g. `src/boot/hello`).
  2. Run `build.sh`. This will assemble the .asm files and compile any .c files, producing the necessary binary files (.bin, etc.).
  3. If `mkdisk.sh` exists, run it. This will create the virtual disk images (.img files) needed for booting.
  4. Run `run.sh`. This will start QEMU and boot the target Bootloader/OS.
 
-Example using `boot/hello`:
+Example using `src/boot/hello`:
 
 ```sh
-cd boot/hello
+cd src/boot/hello
 ./build.sh
 ./run.sh
 ```
