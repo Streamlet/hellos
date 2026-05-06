@@ -44,7 +44,7 @@ cd src/boot/hello
 * 16-bit Real Mode:
     * ✓ Hello in C Language
     * Interactive Console in C Language
-        * Override VGA Text Mode Driver (Replace int 10h)
+        * ✓ Override VGA Text Mode Driver (Replace int 10h)
         * Override PS/2 Keyboard Driver (Replace int 16h)
         * Override System & Power Services (Replace int 15h/19h)
         * Override Disk Driver (Replace int 13h)
