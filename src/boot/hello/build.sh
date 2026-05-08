@@ -1,3 +1,3 @@
 #!/bin/sh
 
-nasm -f bin boot.asm -o boot.bin
+nasm -f bin boot.asm -o boot.bin >/dev/null
