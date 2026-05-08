@@ -1,52 +1,19 @@
 #include "int.h"
-
 #include "bootstrap.h"
+#include "hal.h"
 
 void panic(const char *s) {
-  char __far *const VIDEO_MEMORY = (char __far *)0xB8000000L;
-  const int SCREEN_WIDTH = 80;
-  const int SCREEN_HEIGHT = 25;
-  const unsigned char PANIC_CHAR_ATTR = 0x1F; // White on blue
-  int cursor_pos = 0;
-
-  // Print the message to the screen
-  for (int i = 0; s[i] != '\0'; i++) {
-    if (s[i] == '\r') {
-      cursor_pos -= cursor_pos % SCREEN_WIDTH;
-    } else if (s[i] == '\n') {
-      cursor_pos += SCREEN_WIDTH - cursor_pos % SCREEN_WIDTH;
-    } else if (s[i] == '\b') {
-      if (cursor_pos > 0) {
-        cursor_pos--;
-        VIDEO_MEMORY[cursor_pos * 2] = ' ';
-        VIDEO_MEMORY[cursor_pos * 2 + 1] = PANIC_CHAR_ATTR;
-      }
-    } else {
-      VIDEO_MEMORY[cursor_pos * 2] = s[i];
-      VIDEO_MEMORY[cursor_pos * 2 + 1] = PANIC_CHAR_ATTR;
-      cursor_pos++;
-      if (cursor_pos >= SCREEN_WIDTH * SCREEN_HEIGHT) {
-        // Scroll up
-        for (int i = 0; i < (SCREEN_WIDTH * (SCREEN_HEIGHT - 1)) * 2; i++) {
-          VIDEO_MEMORY[i] = VIDEO_MEMORY[i + SCREEN_WIDTH * 2];
-        }
-        cursor_pos -= SCREEN_WIDTH;
-      }
-    }
+  const unsigned char PANIC_CHAR_ATTR = VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLUE;
+  // Print the panic message
+  int pos = 0;
+  for (; s[pos] != '\0'; pos++) {
+    vga_text_putc_at(pos, s[pos], PANIC_CHAR_ATTR, 0);
   }
-
+  vga_cursor_set_flat_pos(pos);
   // Clear the rest of the screen
-  for (int i = cursor_pos; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-    VIDEO_MEMORY[i * 2] = ' ';
-    VIDEO_MEMORY[i * 2 + 1] = PANIC_CHAR_ATTR;
+  for (; pos < SCREEN_WIDTH * SCREEN_HEIGHT; pos++) {
+    vga_text_putc_at(pos, ' ', PANIC_CHAR_ATTR, 0);
   }
-
-  // Move cursor to the end of the message
-  _outb(0x3D4, 0x0F);
-  _outb(0x3D5, cursor_pos & 0xFF);
-  _outb(0x3D4, 0x0E);
-  _outb(0x3D5, (cursor_pos >> 8) & 0xFF);
-
   // Halt the CPU
   _halt();
 }
@@ -181,7 +148,7 @@ void irq_keyboard() {
       }
       char ascii = SCANCODE_ASCII_MAP[(shift_pressed + caps_lock_on) % 2][keycode];
       if (ascii && !is_release) {
-        vga_text_putc(ascii);
+        vga_text_putc(ascii, VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLACK);
       }
     }
   }

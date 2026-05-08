@@ -1,17 +1,11 @@
 #include "hal.h"
 #include "int.h"
 
-void print_string(const char *s) {
-  for (const char *p = s; *p != '\0'; p++) {
-    vga_text_putc(*p);
-  }
-}
-
 void _kernel_main() {
   setup_irq();
 
   char *message = "\r\nHello, Kernel!\r\n";
-  print_string(message);
+  vga_text_puts(message, VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLACK);
 }
 
 void _isr_entry(unsigned short int_num) {
