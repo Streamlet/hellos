@@ -18,48 +18,6 @@ void panic(const char *s) {
   _halt();
 }
 
-void handle_cpu_exception(unsigned char int_num) {
-  const char *messages[] = {
-      "Error#00: Divided By Zero",
-      "Error#01: Debug Exception",
-      "Error#02: Non-maskable Interrupt",
-      "Error#03: Breakpoint",
-      "Error#04: Overflow",
-      "Error#05: BOUND Range Exceeded",
-      "Error#06: Invalid Opcode",
-      "Error#07: FPU Not Available",
-      "Error#08: Double Fault",
-      "Error#09: Coprocessor Segment Overrun",
-      "Error#0A: Invalid TSS",
-      "Error#0B: Segment Not Present",
-      "Error#0C: Stack Segment Fault",
-      "Error#0D: General Protection Fault",
-      "Error#0E: Page Fault",
-      "Error#0F: Reserved Exception",
-      "Error#10: FPU Floating-Point Error",
-      "Error#11: Alignment Check",
-      "Error#12: Machine Check",
-      "Error#13: SIMD FP Exception",
-      "Error#14: Reserved Exception",
-      "Error#15: Reserved Exception",
-      "Error#16: Reserved Exception",
-      "Error#17: Reserved Exception",
-      "Error#18: Reserved Exception",
-      "Error#19: Reserved Exception",
-      "Error#1A: Reserved Exception",
-      "Error#1B: Reserved Exception",
-      "Error#1C: Reserved Exception",
-      "Error#1D: Reserved Exception",
-      "Error#1E: Reserved Exception",
-      "Error#1F: Reserved Exception",
-  };
-  panic(messages[int_num]);
-}
-
-void irq_timer() {
-  // empty, invoker isr will send EOI to PIC after this handler returns
-}
-
 const char SCANCODE_ASCII_MAP[2][128] = {
     // clang-format off
     {
@@ -154,29 +112,21 @@ void irq_keyboard() {
   }
 }
 
-void irq_cascade() {
+void irq_empty() {
   // empty, invoker isr will send EOI to PIC after this handler returns
 }
 
 void handle_irq(unsigned char irq_num) {
   typedef void (*irq_handler_t)();
   irq_handler_t irq_handlers[] = {
-      /* IRQ00 */ irq_timer,
+      /* IRQ00 */ irq_empty,
       /* IRQ01 */ irq_keyboard,
-      /* IRQ02 */ irq_cascade,
+      /* IRQ02 */ irq_empty,
       /* IRQ03 */ 0,
       /* IRQ04 */ 0,
       /* IRQ05 */ 0,
       /* IRQ06 */ 0,
       /* IRQ07 */ 0,
-      /* IRQ08 */ 0,
-      /* IRQ09 */ 0,
-      /* IRQ0A */ 0,
-      /* IRQ0B */ 0,
-      /* IRQ0C */ 0,
-      /* IRQ0D */ 0,
-      /* IRQ0E */ 0,
-      /* IRQ0F */ 0,
   };
   const char *messages[] = {
       /* IRQ00 */ "Error#20: Unhandled System Timer Interrupt",
@@ -187,19 +137,38 @@ void handle_irq(unsigned char irq_num) {
       /* IRQ05 */ "Error#25: Unhandled LPT2/Sound Interrupt",
       /* IRQ06 */ "Error#26: Unhandled Floppy Disk Interrupt",
       /* IRQ07 */ "Error#27: Unhandled LPT1 Interrupt",
-      /* IRQ08 */ "Error#28: Unhandled Real-Time Clock Interrupt",
-      /* IRQ09 */ "Error#29: Unhandled Redirect to IRQ2 Interrupt",
-      /* IRQ0A */ "Error#2A: Unhandled Reserved/Free Interrupt",
-      /* IRQ0B */ "Error#2B: Unhandled Reserved/Free Interrupt",
-      /* IRQ0C */ "Error#2C: Unhandled PS/2 Mouse Interrupt",
-      /* IRQ0D */ "Error#2D: Unhandled FPU Error Interrupt",
-      /* IRQ0E */ "Error#2E: Unhandled Primary IDE Channel Interrupt",
-      /* IRQ0F */ "Error#2F: Unhandled Secondary IDE Channel Interrupt",
   };
   if (irq_num < sizeof(irq_handlers) / sizeof(irq_handlers[0]) && irq_handlers[irq_num]) {
     irq_handlers[irq_num]();
   } else {
     panic(messages[irq_num]);
+  }
+}
+
+void handle_cpu_exception(unsigned char int_num) {
+  const char *messages[] = {
+      "Error#00: Divided By Zero",    "Error#01: Debug Exception",    "Error#02: Non-maskable Interrupt",
+      "Error#03: Breakpoint",         "Error#04: Overflow",           "Error#05: Reserved Exception",
+      "Error#06: Reserved Exception", "Error#07: Reserved Exception", "Error#08: Reserved Exception",
+      "Error#09: Reserved Exception", "Error#0A: Reserved Exception", "Error#0B: Reserved Exception",
+      "Error#0C: Reserved Exception", "Error#0D: Reserved Exception", "Error#0E: Reserved Exception",
+      "Error#0F: Reserved Exception", "Error#10: Reserved Exception", "Error#11: Reserved Exception",
+      "Error#12: Reserved Exception", "Error#13: Reserved Exception", "Error#14: Reserved Exception",
+      "Error#15: Reserved Exception", "Error#16: Reserved Exception", "Error#17: Reserved Exception",
+      "Error#18: Reserved Exception", "Error#19: Reserved Exception", "Error#1A: Reserved Exception",
+      "Error#1B: Reserved Exception", "Error#1C: Reserved Exception", "Error#1D: Reserved Exception",
+      "Error#1E: Reserved Exception", "Error#1F: Reserved Exception",
+  };
+  panic(messages[int_num]);
+}
+
+void handle_interrupt(unsigned char int_num) {
+  if (int_num >= 0x08 && int_num < 0x10) {
+    handle_irq(int_num - 0x08);
+  } else if (int_num < 0x20) {
+    handle_cpu_exception(int_num);
+  } else {
+    panic("Unknown interrupt");
   }
 }
 
@@ -219,18 +188,7 @@ void disable_irq(unsigned char irq_num) {
   }
 }
 
-void handle_interrupt(unsigned char int_num) {
-  if (int_num < 0x20) {
-    handle_cpu_exception(int_num);
-  } else if (int_num < 0x30) {
-    handle_irq(int_num - 0x20);
-  } else {
-    panic("Unknown interrupt");
-  }
-}
-
 void setup_irq() {
   enable_irq(0); // Enable system timer interrupt
   enable_irq(1); // Enable keyboard interrupt
-  enable_irq(2); // Enable cascade (slave PIC) interrupt
 }

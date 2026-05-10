@@ -8,6 +8,6 @@ void _kernel_main() {
   vga_text_puts(message, VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLACK);
 }
 
-void _isr_entry(unsigned short int_num) {
+void _interrupt_entry(unsigned short int_num) {
   handle_interrupt(int_num);
 }

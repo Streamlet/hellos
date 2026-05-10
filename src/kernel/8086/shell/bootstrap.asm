@@ -2,7 +2,7 @@
 [bits 16]   ; 16-bit real mode
 
 extern __kernel_main
-extern __isr_entry
+extern __interrupt_entry
 
 section .text
 
@@ -77,41 +77,12 @@ __outw:
 
 init_ivt:
     cli
-    call remap_pic
-    call setup_pit
     call reset_ivt
+    call setup_pit
     sti
     ret
 
-remap_pic:
-    ; remap PIC: IRQ0-7 to INT 0x20-0x27, IRQ8-15 to INT 0x28-0x2f
-    ; master PIC
-    mov dx, 0x20
-    mov al, 0x11
-    out dx, al ; start initialization in cascade mode
-    mov dx, 0x21
-    mov al, 0x20
-    out dx, al ; master PIC vector offset
-    mov al, 0x04
-    out dx, al ; tell master PIC that there is a slave PIC at IRQ2
-    mov al, 0x01
-    out dx, al ; set master PIC to 8086 mode
-    mov al, 0xFF
-    out dx, al ; disable all IRQs on master PIC
-    ; slave PIC
-    mov dx, 0xA0
-    mov al, 0x11
-    out dx, al ; start initialization in cascade mode
-    mov dx, 0xA1
-    mov al, 0x28
-    out dx, al ; slave PIC vector offset
-    mov al, 0x02
-    out dx, al ; tell slave PIC its cascade identity
-    mov al, 0x01
-    out dx, al ; set slave PIC to 8086 mode
-    mov al, 0xFF
-    out dx, al ; disable all IRQs on slave PIC
-    ret
+IVT_COUNT equ 32
 
 reset_ivt:
     push es
@@ -120,7 +91,7 @@ reset_ivt:
     xor bx, bx
     mov es, bx
     mov si, isr_stub_table
-    mov cx, 48
+    mov cx, IVT_COUNT
     .loop:
         mov ax, [si]
         mov [es:bx], ax
@@ -153,18 +124,13 @@ isr_stub:
     mov bp, sp
     mov ax, [bp+20]  ; get the interrupt number
     push ax
-    call __isr_entry
+    call __interrupt_entry
     add sp, 2   ; pop the interrupt number argument
-    ; send EOI to PICs if it's a hardware interrupt (INT 0x20 - 0x2F)
-    cmp word [bp+20], 0x20
+    ; send EOI to PICs if it's a hardware interrupt (INT 0x08 - 0x1F)
+    cmp word [bp+20], 0x08
     jb .end
-    cmp word [bp+20], 0x28
-    jb .master_pic
-    .slave_pic:
-        mov dx, 0xA0
-        mov al, 0x20
-        out dx, al ; send EOI to slave PIC
-    .master_pic:
+    cmp word [bp+20], 0x20
+    jae .end
         mov dx, 0x20
         mov al, 0x20
         out dx, al ; send EOI to PIC
@@ -176,7 +142,7 @@ isr_stub:
     iret
 
 %assign i 0
-%rep 48
+%rep IVT_COUNT
 isr_stub_%+i:
     push i
     jmp isr_stub
@@ -188,7 +154,7 @@ section .data
 
 isr_stub_table:
 %assign i 0
-%rep 48
+%rep IVT_COUNT
     dw isr_stub_%+i ; save the address of each isr_stub_*
 %assign i i+1
 %endrep
