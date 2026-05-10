@@ -43,12 +43,12 @@ cd src/boot/hello
         * ✓ Interactive Console
 * 16-bit Real Mode:
     * ✓ Hello in C Language
-    * Interactive Console in C Language
+    * ✓ Interactive Console in C Language
         * ✓ Override VGA Text Mode Driver (Replace int 10h)
-        * Override PS/2 Keyboard Driver (Replace int 16h)
-        * Override System & Power Services (Replace int 15h/19h)
-        * Override Disk Driver (Replace int 13h)
+        * ✓ Override PS/2 Keyboard Driver (Replace int 16h)
+        * ✓ Override System & Power Services (Replace int 15h/19h)
     * Shell with File System Commands (`cat`, `echo >`, `touch`, `ls`, `cd`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`)
+        * Override Disk Driver (Replace int 13h)
         * FAT Driver (Read & Write)
 * 16-bit Protected Mode
     * Hello in Ring 3
