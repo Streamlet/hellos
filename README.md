@@ -47,28 +47,32 @@ cd src/boot/hello
         * ✓ Override VGA Text Mode Driver (Replace int 10h)
         * ✓ Override PS/2 Keyboard Driver (Replace int 16h)
         * ✓ Override System & Power Services (Replace int 15h/19h)
-    * Shell with File System Commands (`cat`, `echo >`, `touch`, `ls`, `cd`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`)
+    * File System Commands (`cat`, `echo >`, `touch`, `ls`, `cd`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`)
         * Override Disk Driver (Replace int 13h)
         * FAT Driver (Read & Write)
+    * External Command
+        * Execute Flat Binary From Disk
+        * Provide stdio.h — Run Classic C Exercises (printf, puts, file I/O)
+        * Provide dos.h — Porting Tank War, My University C Course Project
 * 16-bit Protected Mode
     * Hello in Ring 3
         * IO Interrupts
         * Memory Management
         * Process Context (Single Process)
-        * System Call
+        * Protected Mode API
     * Interactive Console in Ring 3
-    * Shell with File System Commands in Ring 3
+    * File System Commands in Ring 3
+    * External Command in Ring 3
 * 32-bit Protected Mode
-    * Hello
+    * Hello (32-bit)
         * Process with Memory Paging
-    * Interactive Console in Ring 3
-    * Shell with File System Commands in Ring 3
-    * Shell with External Command
+    * Interactive Console (32-bit)
+    * File System Commands (32-bit)
         * Cooperative Multitasking
         * Preemptive Multitasking
 * 64-bit Long Mode
-    * Hello
-    * Interactive Console in Ring 3
-    * Shell with File System Commands in Ring 3
-    * Shell with External Command
+    * Hello (64-bit)
+    * Interactive Console (64-bit)
+    * File System Commands (64-bit)
+    * External Command (64-bit)
     * UEFI Support
