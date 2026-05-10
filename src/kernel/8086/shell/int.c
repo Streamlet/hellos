@@ -1,4 +1,3 @@
-#include "int.h"
 #include "bootstrap.h"
 #include "hal.h"
 
@@ -15,101 +14,17 @@ void panic(const char *s) {
     vga_text_putc_at(pos, ' ', PANIC_CHAR_ATTR, 0);
   }
   // Halt the CPU
-  _halt();
+  _disable(); // Disable interrupts to avoid timer interrupts during halt
+  _halt();    // Halt the CPU forever
 }
 
-const char SCANCODE_ASCII_MAP[2][128] = {
-    // clang-format off
-    {
-        0,                                                                                  // 0x00: scancode 0 is not used
-        '\x1b', '1',  '2', '3', '4', '5', '6', '7', '8', '9', '0', '-',  '=', '\b',         // 0x01-0x0E: ESC
-        '\t',   'q',  'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[',  ']', '\n',         // 0x0F-0x1C: Tab
-        0,      'a',  's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',               // 0x1D-0x29: Left Ctrl
-        0,      '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',  0,                 // 0x2A-0x36: Left Shift ... Right Shift
-        '*',    0,    ' ', 0,                                                               // 0x37-0x3A: ... Left Alt ... Caps Lock
-        0,      0,    0,   0,   0,   0,   0,   0,   0,   0,                                 // 0x3B-0x44, F1-F10
-        0,      0,                                                                          // 0x45-0x46: Num Lock, Scroll Lock
-        '7',    '8',  '9', '-', '4', '5', '6', '+', '1', '2', '3', '0',  '.',               // 0x47-0x53: NumPad
-        0,      0,    0,   0,   0,                                                          // 0x54-0x58: Reserved ... F11, F12
-        0,      0,    0,   0,   0,   0,   0,                                                // 0x59-0x5F: F13-F19
-        0,      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,    0,   0,    0, 0,   // 0x60-0x6F: Reserved
-        0,      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,    0,   0,    0, 0,   // 0x70-0x7F: Reserved
-    },
-    {
-        0,                                                                                  // 0x00: scancode 0 is not used
-        '\x1b', '!',  '@', '#', '$', '%', '^', '&', '*', '(', ')', '_',  '+', '\b',         // 0x01-0x0E: ESC
-        '\t',   'Q',  'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{',  '}', '\n',         // 0x0F-0x1C: Tab
-        0,      'A',  'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',                // 0x1D-0x29: Left Ctrl
-        0,      '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?',  0,                  // 0x2A-0x36: Left Shift ... Right Shift
-        '*',    0,    ' ', 0,                                                               // 0x37-0x3A: ... Left Alt ... Caps Lock
-        0,      0,    0,   0,   0,   0,   0,   0,   0,   0,                                 // 0x3B-0x44, F1-F10
-        0,      0,                                                                          // 0x45-0x46: Num Lock, Scroll Lock
-        '7',    '8',  '9', '-', '4', '5', '6', '+', '1', '2', '3', '0',  '.',               // 0x47-0x53: NumPad
-        0,      0,    0,   0,   0,                                                          // 0x54-0x58: Reserved ... F11, F12
-        0,      0,    0,   0,   0,   0,   0,                                                // 0x59-0x5F: F13-F19
-        0,      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,    0,   0,    0, 0,   // 0x60-0x6F: Reserved
-        0,      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,    0,   0,    0, 0,   // 0x70-0x7F: Reserved
-    },
-    // clang-format on
-};
-
-char scancode_buffer[8] = {0}; // Buffer for scancodes
-int scancode_length = 0;       // Number of scancodes in the buffer
-int shift_pressed = 0;         // Shift key state
-int alt_pressed = 0;           // Alt key state
-int ctrl_pressed = 0;          // Ctrl key state
-int caps_lock_on = 0;          // Caps Lock state
-int num_lock_on = 0;           // Num Lock state
-int scroll_lock_on = 0;        // Scroll Lock state
+void process_incoming_scancode(unsigned char scancode);
 void irq_keyboard() {
   if (!(_inb(0x64) & 1)) {
     return;
   }
   unsigned char scancode = _inb(0x60);
-  if (scancode_length != 0) {
-    scancode_buffer[scancode_length++] = scancode;
-    // Judge if the scancode sequence is complete
-    if (scancode_buffer[0] == 0xE0 && scancode_length == 2) {
-      scancode_length = 0;
-      // Process the two-byte scancode
-      unsigned char is_release = scancode_buffer[1] & 0x80;
-      unsigned char keycode = scancode_buffer[1] & 0x7F;
-      if (keycode == 0x1D) { // Ctrl
-        ctrl_pressed = !is_release;
-      }
-    } else if (scancode_buffer[0] == 0xE1 && scancode_length == 3) {
-      scancode_length = 0;
-      // Process the three-byte scancode (e.g., Pause/Break)
-    } else if (scancode_length >= sizeof(scancode_buffer)) {
-      scancode_length = 0;
-      // Invalid scancode sequence, reset buffer
-    }
-  } else {
-    if (scancode == 0xE0 || scancode == 0xE1) {
-      scancode_buffer[scancode_length++] = scancode;
-    } else {
-      // Process the single-byte scancode immediately
-      unsigned char is_release = scancode & 0x80;
-      unsigned char keycode = scancode & 0x7F;
-      if (keycode == 0x2A || keycode == 0x36) { // Shift
-        shift_pressed = !is_release;
-      } else if (keycode == 0x38) { // Alt
-        alt_pressed = !is_release;
-      } else if (keycode == 0x1D) { // Ctrl
-        ctrl_pressed = !is_release;
-      } else if (keycode == 0x3A && !is_release) { // Caps Lock
-        caps_lock_on = !caps_lock_on;
-      } else if (keycode == 0x45 && !is_release) { // Num Lock
-        num_lock_on = !num_lock_on;
-      } else if (keycode == 0x46 && !is_release) { // Scroll Lock
-        scroll_lock_on = !scroll_lock_on;
-      }
-      char ascii = SCANCODE_ASCII_MAP[(shift_pressed + caps_lock_on) % 2][keycode];
-      if (ascii && !is_release) {
-        vga_text_putc(ascii, VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLACK);
-      }
-    }
-  }
+  process_incoming_scancode(scancode);
 }
 
 void irq_empty() {
@@ -117,6 +32,9 @@ void irq_empty() {
 }
 
 void handle_irq(unsigned char irq_num) {
+  if (irq_num == 0) {
+    return;
+  }
   typedef void (*irq_handler_t)();
   irq_handler_t irq_handlers[] = {
       /* IRQ00 */ irq_empty,
@@ -162,7 +80,7 @@ void handle_cpu_exception(unsigned char int_num) {
   panic(messages[int_num]);
 }
 
-void handle_interrupt(unsigned char int_num) {
+void int_handler(unsigned char int_num) {
   if (int_num >= 0x08 && int_num < 0x10) {
     handle_irq(int_num - 0x08);
   } else if (int_num < 0x20) {
@@ -172,23 +90,16 @@ void handle_interrupt(unsigned char int_num) {
   }
 }
 
-void enable_irq(unsigned char irq_num) {
-  if (irq_num < 8) {
-    _outb(0x21, _inb(0x21) & ~(1 << irq_num));
-  } else {
-    _outb(0xA1, _inb(0xA1) & ~(1 << (irq_num - 8)));
-  }
+void setup_pit() {
+  // Set PIT channel 0 to mode 3 (square wave generator) with a frequency of 100Hz
+  _outb(0x43, 0x36); // Control word: channel 0, access mode lobyte/hibyte, mode 3, binary
+  _outb(0x40, 0);    // Divisor low byte (1193180 / 65536 ≈ 18.2Hz)
+  _outb(0x40, 0);    // Divisor high byte (0 for 65536)
 }
 
-void disable_irq(unsigned char irq_num) {
-  if (irq_num < 8) {
-    _outb(0x21, _inb(0x21) | (1 << irq_num));
-  } else {
-    _outb(0xA1, _inb(0xA1) | (1 << (irq_num - 8)));
-  }
-}
-
-void setup_irq() {
-  enable_irq(0); // Enable system timer interrupt
-  enable_irq(1); // Enable keyboard interrupt
+void int_init() {
+  _disable();
+  _reset_ivt();
+  setup_pit();
+  _enable();
 }

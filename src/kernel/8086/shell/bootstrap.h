@@ -8,5 +8,6 @@ unsigned char _inb(unsigned short port);
 unsigned short _inw(unsigned short port);
 void _outb(unsigned short port, unsigned char value);
 void _outw(unsigned short port, unsigned short value);
+void _reset_ivt();
 
 #endif // __BOOTSTRAP_H_INCLUDED__

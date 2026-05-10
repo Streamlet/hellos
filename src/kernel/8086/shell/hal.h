@@ -4,6 +4,8 @@
 #define SCREEN_WIDTH 80
 #define SCREEN_HEIGHT 25
 
+void hal_init();
+
 unsigned short vga_cursor_get_flat_pos();
 void vga_cursor_set_flat_pos(unsigned short pos);
 void vga_cursor_get_pos(int *x, int *y);
@@ -36,5 +38,9 @@ enum {
 unsigned short vga_text_putc_at(unsigned short pos, char c, unsigned char attr, unsigned char auto_scroll);
 void vga_text_putc(char c, unsigned char attr);
 void vga_text_puts(const char *s, unsigned char attr);
+
+void timer_wait(unsigned long milliseconds);
+
+unsigned short keyboard_read();
 
 #endif // __HAL_H_INCLUDED__

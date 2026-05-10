@@ -13,7 +13,6 @@ _start:
     mov es, ax
     mov ss, ax
     mov sp, _start
-    call init_ivt
     call __kernel_main
     jmp $
 
@@ -23,8 +22,8 @@ _small_code_:
 
 global __halt
 __halt:
-    cli
     hlt
+    ret
 
 global __disable
 __disable:
@@ -75,16 +74,10 @@ __outw:
     pop bp
     ret
 
-init_ivt:
-    cli
-    call reset_ivt
-    call setup_pit
-    sti
-    ret
-
 IVT_COUNT equ 32
 
-reset_ivt:
+global __reset_ivt
+__reset_ivt:
     push es
     push si
     push bx
@@ -105,17 +98,6 @@ reset_ivt:
     pop es
     ret
 
-setup_pit:
-    ; set PIT channel 0 to mode 3 (square wave generator) with a frequency of 100Hz
-    mov dx, 0x43
-    mov al, 0x36
-    out dx, al  ; control word: channel 0, access mode lobyte/hibyte, mode 3, binary
-    mov dx, 0x40
-    xor al, al  ; divisor (1193180 / 65536 ≈ 18.2Hz)
-    out dx, al  ; low byte
-    out dx, al  ; high byte
-    ret
-
 isr_stub:
     ; isr_stub_* will push the interrupt number onto the stack before jumping here
     pusha   ; 8 general-purpose registers
@@ -126,10 +108,10 @@ isr_stub:
     push ax
     call __interrupt_entry
     add sp, 2   ; pop the interrupt number argument
-    ; send EOI to PICs if it's a hardware interrupt (INT 0x08 - 0x1F)
+    ; send EOI to PICs if it's a hardware interrupt (INT 0x08 - 0x0F)
     cmp word [bp+20], 0x08
     jb .end
-    cmp word [bp+20], 0x20
+    cmp word [bp+20], 0x10
     jae .end
         mov dx, 0x20
         mov al, 0x20
