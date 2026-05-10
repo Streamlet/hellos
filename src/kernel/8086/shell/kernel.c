@@ -41,12 +41,12 @@ void _kernel_main() {
     char *line = gets(input_buffer, sizeof(input_buffer));
     if (strcmp(line, "shutdown") == 0) {
       vga_text_puts("Shuting down...\n", VGA_TEXT_ATTR_GREEN | VGA_TEXT_ATTR_BG_BLACK);
-      timer_wait(3000);
-      // TODO
+      timer_wait(1000);
+      power_off();
     } else if (strcmp(line, "reboot") == 0) {
-      vga_text_puts("Rebooting\n", VGA_TEXT_ATTR_GREEN | VGA_TEXT_ATTR_BG_BLACK);
-      timer_wait(3000);
-      // TODO
+      vga_text_puts("Rebooting...\n", VGA_TEXT_ATTR_GREEN | VGA_TEXT_ATTR_BG_BLACK);
+      timer_wait(1000);
+      reset();
     } else if (line[0] != '\0') {
       vga_text_puts("Bad command.\nAvailable commands: shutdown, reboot\n", VGA_TEXT_ATTR_RED | VGA_TEXT_ATTR_BG_BLACK);
     }

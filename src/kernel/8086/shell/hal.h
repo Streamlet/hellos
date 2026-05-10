@@ -6,6 +6,9 @@
 
 void hal_init();
 
+void power_off();
+void reset();
+
 unsigned short vga_cursor_get_flat_pos();
 void vga_cursor_set_flat_pos(unsigned short pos);
 void vga_cursor_get_pos(int *x, int *y);
