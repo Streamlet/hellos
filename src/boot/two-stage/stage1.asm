@@ -39,9 +39,6 @@ main:
 
 
 ; functions
-; caller-saved registers: AX, CX, DX
-; callee-saved registers: The rests
-; return value: AX (16-bit), DX:AX (32-bit)
 
 ; print a null-terminated string at the current cursor position
 ; input: DS:SI points to the string

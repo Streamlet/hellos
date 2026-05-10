@@ -9,9 +9,6 @@ section .text
 ;%include "debug.asm"
 
 ; functions
-; caller-saved registers: AX, CX, DX
-; callee-saved registers: The rests
-; return value: AX (16-bit), DX:AX (32-bit)
 
 ERROR_NO_BOOT_PARTITION_FOUND   equ 1
 ERROR_UNSUPPORTED_PARTITION     equ 2

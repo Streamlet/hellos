@@ -60,9 +60,6 @@ cmd_loop:
 
 
 ; functions
-; caller-saved registers: AX, CX, DX
-; callee-saved registers: The rests
-; return value: AX (16-bit), DX:AX (32-bit)
 
 ; read a line of input from the keyboard
 ; input: DI=buffer
