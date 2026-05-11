@@ -1,112 +1,6 @@
-#include "hal.h"
+#include "keyboard.h"
 
 #include "bootstrap.h"
-
-void power_off() {
-  _disable();
-  _outw(0x604, 0x2000); // Qemu only, for real hardware, we may need to send ACPI command to power off
-}
-
-void reset() {
-  _disable();
-  _outb(0x64, 0xFE);
-}
-
-unsigned short vga_cursor_get_flat_pos() {
-  _outb(0x3D4, 0x0F);
-  unsigned char low = _inb(0x3D5);
-  _outb(0x3D4, 0x0E);
-  unsigned char high = _inb(0x3D5);
-  return ((unsigned short)high << 8) | low;
-}
-
-void vga_cursor_set_flat_pos(unsigned short pos) {
-  _outb(0x3D4, 0x0F);
-  _outb(0x3D5, pos & 0xFF);
-  _outb(0x3D4, 0x0E);
-  _outb(0x3D5, (pos >> 8) & 0xFF);
-}
-
-void vga_cursor_get_pos(int *x, int *y) {
-  unsigned short pos = vga_cursor_get_flat_pos();
-  *x = pos % SCREEN_WIDTH;
-  *y = pos / SCREEN_WIDTH;
-}
-
-void vga_cursor_set_pos(int x, int y) {
-  unsigned short pos = y * SCREEN_WIDTH + x;
-  vga_cursor_set_flat_pos(pos);
-}
-
-unsigned short vga_text_putc_at(unsigned short pos, char c, unsigned char attr, unsigned char auto_scroll) {
-  char __far *const VIDEO_MEMORY = (char __far *)0xB8000000L;
-  if (c == '\r') {
-    pos -= pos % SCREEN_WIDTH;
-  } else if (c == '\n') {
-    pos += SCREEN_WIDTH - pos % SCREEN_WIDTH;
-  } else if (c == '\b') {
-    if (pos > 0) {
-      pos--;
-      VIDEO_MEMORY[pos * 2] = ' ';
-      VIDEO_MEMORY[pos * 2 + 1] = attr;
-    }
-  } else {
-    VIDEO_MEMORY[pos * 2] = c;
-    VIDEO_MEMORY[pos * 2 + 1] = attr;
-    pos++;
-  }
-  if (pos >= SCREEN_WIDTH * SCREEN_HEIGHT && auto_scroll) {
-    // Scroll up
-    for (int i = 0; i < (SCREEN_WIDTH * (SCREEN_HEIGHT - 1)) * 2; i++) {
-      VIDEO_MEMORY[i] = VIDEO_MEMORY[i + SCREEN_WIDTH * 2];
-    }
-    // Clear last line
-    for (int i = (SCREEN_WIDTH * (SCREEN_HEIGHT - 1)) * 2; i < SCREEN_WIDTH * SCREEN_HEIGHT * 2; i += 2) {
-      VIDEO_MEMORY[i] = ' ';
-      VIDEO_MEMORY[i + 1] = attr;
-    }
-    pos -= SCREEN_WIDTH;
-  }
-  return pos;
-}
-
-void vga_text_putc(char c, unsigned char attr) {
-  unsigned short cursor_pos = vga_cursor_get_flat_pos();
-  cursor_pos = vga_text_putc_at(cursor_pos, c, attr, 1);
-  vga_cursor_set_flat_pos(cursor_pos);
-}
-
-void vga_text_puts(const char *s, unsigned char attr) {
-  unsigned short cursor_pos = vga_cursor_get_flat_pos();
-  while (*s) {
-    cursor_pos = vga_text_putc_at(cursor_pos, *s++, attr, 1);
-  }
-  vga_cursor_set_flat_pos(cursor_pos);
-}
-
-void timer_wait(unsigned long milliseconds) {
-// Convert milliseconds to PIT ticks
-// PIT frequency 1193180 / 65536 = ~18.2 Hz
-// 1 tick is about 65536 / 1193180 = 54.925493219799192074959352319013 ms
-#define TICK_MS 54                     // interger part of milliseconds per tick
-#define TICK_MS_FRAC 925493220UL       // fractional part of milliseconds per tick, scaled by TICK_MS_FRAC_BASE
-#define TICK_MS_FRAC_BASE 1000000000UL // fractional part base (1 nanosecond)
-  unsigned long time_elapsed = 0, time_elapsed_frac = 0, time_delta = 0;
-  while (time_elapsed < milliseconds) {
-    _halt();
-    time_elapsed_frac += TICK_MS_FRAC;
-    time_delta = TICK_MS;
-    while (time_elapsed_frac >= TICK_MS_FRAC_BASE) {
-      time_elapsed_frac -= TICK_MS_FRAC_BASE;
-      ++time_delta;
-    }
-    if (time_elapsed + time_delta < time_elapsed) {
-      // Overflow
-      break;
-    }
-    time_elapsed += time_delta;
-  }
-}
 
 //
 // 0x417 Keyboard Control Byte
@@ -373,7 +267,7 @@ unsigned char scancode_length_ = 0;                  // Number of scancodes in t
 // Note: There is no scan code for "pause key released" (it behaves as if it is released as soon as it's pressed)
 char pause_scancode_sequence_[6] = {0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5};
 
-void process_incoming_scancode(unsigned char scancode) {
+void keyboard_interrupt_handler(unsigned char scancode) {
   if (scancode_buffer_[0] != 0) {
     scancode_buffer_[scancode_length_++] = scancode;
     // Judge if the scancode sequence is complete
@@ -413,7 +307,7 @@ void process_incoming_scancode(unsigned char scancode) {
   }
 }
 
-void init_key_state() {
+void keyboard_init() {
   key_state_ = *(unsigned short __far *)0x00000417L;
   if ((key_state_ & KEY_STATE_CTRL_PRESSED) != 0 && (key_state_ & KEY_STATE_LCTRL_PRESSED) == 0) {
     key_state_ex_ |= KEY_STATE_EX_RCTRL_PRESSED;
@@ -421,8 +315,4 @@ void init_key_state() {
   if ((key_state_ & KEY_STATE_ALT_PRESSED) != 0 && (key_state_ & KEY_STATE_LALT_PRESSED) == 0) {
     key_state_ex_ |= KEY_STATE_EX_RALT_PRESSED;
   }
-}
-
-void hal_init() {
-  init_key_state();
 }

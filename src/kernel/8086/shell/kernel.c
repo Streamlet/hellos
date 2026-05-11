@@ -1,5 +1,8 @@
-#include "hal.h"
 #include "int.h"
+#include "keyboard.h"
+#include "power.h"
+#include "timer.h"
+#include "vga.h"
 
 char *gets(char *buffer, unsigned int buffer_length) {
   for (int i = 0; i < buffer_length - 1;) {
@@ -32,7 +35,7 @@ int strcmp(const char *s1, const char *s2) {
 }
 
 void _kernel_main() {
-  hal_init();
+  keyboard_init();
   int_init();
 
   char input_buffer[128] = {0};
@@ -40,7 +43,7 @@ void _kernel_main() {
     vga_text_puts(">", VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLACK);
     char *line = gets(input_buffer, sizeof(input_buffer));
     if (strcmp(line, "shutdown") == 0) {
-      vga_text_puts("Shuting down...\n", VGA_TEXT_ATTR_GREEN | VGA_TEXT_ATTR_BG_BLACK);
+      vga_text_puts("Shutting down...\n", VGA_TEXT_ATTR_GREEN | VGA_TEXT_ATTR_BG_BLACK);
       timer_wait(1000);
       power_off();
     } else if (strcmp(line, "reboot") == 0) {

@@ -1,13 +1,8 @@
-#ifndef __HAL_H_INCLUDED__
-#define __HAL_H_INCLUDED__
+#ifndef __VGA_H_INCLUDED__
+#define __VGA_H_INCLUDED__
 
 #define SCREEN_WIDTH 80
 #define SCREEN_HEIGHT 25
-
-void hal_init();
-
-void power_off();
-void reset();
 
 unsigned short vga_cursor_get_flat_pos();
 void vga_cursor_set_flat_pos(unsigned short pos);
@@ -42,8 +37,4 @@ unsigned short vga_text_putc_at(unsigned short pos, char c, unsigned char attr, 
 void vga_text_putc(char c, unsigned char attr);
 void vga_text_puts(const char *s, unsigned char attr);
 
-void timer_wait(unsigned long milliseconds);
-
-unsigned short keyboard_read();
-
-#endif // __HAL_H_INCLUDED__
+#endif // __VGA_H_INCLUDED__

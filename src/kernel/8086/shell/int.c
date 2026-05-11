@@ -1,5 +1,6 @@
 #include "bootstrap.h"
-#include "hal.h"
+#include "keyboard.h"
+#include "vga.h"
 
 void panic(const char *s) {
   const unsigned char PANIC_CHAR_ATTR = VGA_TEXT_ATTR_WHITE | VGA_TEXT_ATTR_BG_BLUE;
@@ -24,7 +25,7 @@ void irq_keyboard() {
     return;
   }
   unsigned char scancode = _inb(0x60);
-  process_incoming_scancode(scancode);
+  keyboard_interrupt_handler(scancode);
 }
 
 void irq_empty() {
