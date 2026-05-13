@@ -45,19 +45,18 @@ disk:
 	dd if=/dev/zero of=disk.img bs=512 count=65536 > /dev/null 2>&1
 
 	echo Creating partition ...
-	printf "n\np\n1\n2048\n65535\na\nt\n$(FS)\nw\n" | fdisk disk.img > /dev/null 2>&1
+	printf "n\np\n1\n2048\n32768\na\nt\nc\nn\ne\n2\n34816\n49152\nn\nl\n36864\n49152\nt\n5\ne\nn\np\n3\n51200\n65535\nt\n3\n1\nw\n" | fdisk disk.img > /dev/null 2>&1
 
 	echo Creating filesystem ...
-	dd if=disk.img of=partition.img bs=512 skip=2048 > /dev/null 2>&1
-	case $(FS) in \
-		1) mkfs.fat -F 12 partition.img > /dev/null 2>&1;; \
-		4|6|e) mkfs.fat -F 16 partition.img > /dev/null 2>&1;; \
-		b|c) mkfs.fat -F 32 partition.img > /dev/null 2>&1;; \
-		*) echo "Unsupported type $(FS)"; exit 1 ;; \
-	esac
+	dd if=disk.img of=partition1.img bs=512 skip=2048 count=30720 > /dev/null 2>&1
+	mkfs.fat -F 32 partition1.img > /dev/null 2>&1
+	dd if=disk.img of=partition2.img bs=512 skip=36864 count=12288 > /dev/null 2>&1
+	mkfs.fat -F 16 partition2.img > /dev/null 2>&1
+	dd if=disk.img of=partition3.img bs=512 skip=51200 count=14304 > /dev/null 2>&1
+	mkfs.fat -F 12 partition3.img > /dev/null 2>&1
 
-	echo Writing kernel ...
-	mcopy -i partition.img kernel.bin ::/KERNEL.BIN
+	echo Writing files ...
+	mcopy -o -i partition1.img kernel.bin ::/KERNEL.BIN
 
 	echo Writing stage1 bootloader ...
 	dd if=stage1.bin of=disk.img bs=512 seek=0 conv=notrunc > /dev/null 2>&1
@@ -67,7 +66,9 @@ disk:
 	dd if=stage2.bin of=disk.img bs=512 seek=1 conv=notrunc > /dev/null 2>&1
 
 	echo Combining partition with disk image ...
-	dd if=partition.img of=disk.img bs=512 seek=2048 conv=notrunc > /dev/null 2>&1
+	dd if=partition1.img of=disk.img bs=512 seek=2048 conv=notrunc > /dev/null 2>&1
+	dd if=partition2.img of=disk.img bs=512 seek=36864 conv=notrunc > /dev/null 2>&1
+	dd if=partition3.img of=disk.img bs=512 seek=51200 conv=notrunc > /dev/null 2>&1
 
 	echo Done
 
