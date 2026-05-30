@@ -48,7 +48,7 @@ cd src/boot/hello
         * ✓ Override PS/2 Keyboard Driver (Replace int 16h)
         * ✓ Override System & Power Services (Replace int 15h/19h)
     * File System Commands (`cat`, `echo >`, `touch`, `ls`, `cd`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`)
-        * Override Disk Driver (Replace int 13h)
+        * ✓ Override Disk Driver (Replace int 13h)
         * FAT Driver (Read & Write)
     * External Command
         * Execute Flat Binary From Disk
