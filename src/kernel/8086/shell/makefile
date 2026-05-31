@@ -2,7 +2,7 @@ ASM = nasm
 CC = wcc
 CFLAGS = -0 -s -os -d0 -ecc -ms -zastd=c99
 LD = wlink
-LDFLAGS = format raw bin name kernel.bin option nodefaultlibs option eliminate option offset=0x77C00 option start=_start
+LDFLAGS = format raw bin name kernel.bin option nodefaultlibs option eliminate option offset=0x9C000 option start=_start
 
 # FAT12: 1
 # FAT16: 4, 6, e
