@@ -12,14 +12,14 @@ section .text
 
 ERROR_NO_BOOT_PARTITION_FOUND   equ 1
 ERROR_UNSUPPORTED_PARTITION     equ 2
-ERROR_LOAD_VBR                  equ 3
+ERROR_LOAD_PBR                  equ 3
 ERROR_LOAD_ROOT_DIR             equ 4
 ERROR_LOAD_FAT                  equ 5
 ERROR_FILE_NOT_FOUND            equ 6
 ERROR_LOAD_FILE                 equ 7
 
 
-; initialize FAT filesystem, find the bootable partition, load VBR and root directory
+; initialize FAT filesystem, find the bootable partition, load PBR and root directory
 ; inputs: SI = pointer to partition table (16 bytes * 4)
 ; outputs: global variables
 ;          CF set on error, clear if no error, AL = error code if CF=1
@@ -29,7 +29,7 @@ fat_init:
     jc .error
     call mbr_check_partition_type
     jc .error
-    call mbr_load_vbr
+    call mbr_load_pbr
     jc .error
     call fat_calc_layout
     jc .error
@@ -110,9 +110,9 @@ mbr_check_partition_type:
 
 ; load the bootable partition in MBR
 ; inputs: none (use global variables)
-; outputs: fill VBR_BPB_ADDRESS with the BPB from the partition's VBR
+; outputs: fill PBR_BPB_ADDRESS with the BPB from the partition's PBR
 ;          CF set on error, clear if no error, AL = error code if CF=1
-mbr_load_vbr:
+mbr_load_pbr:
     mov ax, [partition_entry.relative_sector + 2]
     push ax
     mov ax, [partition_entry.relative_sector]
@@ -123,10 +123,10 @@ mbr_load_vbr:
     call bios_load_sector_lba
     jc .error
     .copy_bpb:
-        ; copy the BPB from the loaded VBR to VBR_BPB_ADDRESS
+        ; copy the BPB from the loaded PBR to PBR_BPB_ADDRESS
         push si
         push di
-        mov si, fat_sectors_buffer + 0x0b  ; SI = source address of loaded VBR
+        mov si, fat_sectors_buffer + 0x0b  ; SI = source address of loaded PBR
         cld                     ; clear direction flag for string operations
         mov di, bpb             ; ES:DI = destination address
         mov cx, bpb_end - bpb   ; copy BPB size
@@ -135,7 +135,7 @@ mbr_load_vbr:
         pop si
         ret
     .error:
-        mov al, ERROR_LOAD_VBR
+        mov al, ERROR_LOAD_PBR
         ret
 
 ; calculate FAT layout based on the BPB and partition information

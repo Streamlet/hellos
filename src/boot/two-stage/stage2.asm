@@ -55,8 +55,8 @@ main:
         je .error_no_boot_partition_found
         cmp al, ERROR_UNSUPPORTED_PARTITION
         je .error_unsupported_partition
-        cmp al, ERROR_LOAD_VBR
-        je .error_load_vbr
+        cmp al, ERROR_LOAD_PBR
+        je .error_load_pbr
         cmp al, ERROR_LOAD_ROOT_DIR
         je .error_load_root_dir
         cmp al, ERROR_LOAD_FAT
@@ -71,8 +71,8 @@ main:
     .error_unsupported_partition:
         mov si, msg_unsupported_partition
         jmp .print_error_and_halt
-    .error_load_vbr:
-        mov si, msg_failed_to_load_vbr
+    .error_load_pbr:
+        mov si, msg_failed_to_load_pbr
         jmp .print_error_and_halt
     .error_load_root_dir:
         mov si, msg_failed_to_load_root_dir
@@ -117,7 +117,7 @@ section .data
 kernel_file_name db 'KERNEL  BIN ', 0 ; 11 bytes (8.3 format)
 msg_no_boot_partition_found db 'Error: no bootable partition found.', 0x0D, 0x0A, 0
 msg_unsupported_partition db 'Error: unsupported partition type.', 0x0D, 0x0A, 0
-msg_failed_to_load_vbr db 'Error: failed to load VBR.', 0x0D, 0x0A, 0
+msg_failed_to_load_pbr db 'Error: failed to load PBR.', 0x0D, 0x0A, 0
 msg_failed_to_load_root_dir db 'Error: failed to load root directory.', 0x0D, 0x0A, 0
 msg_failed_to_load_fat db 'Error: failed to load fat.', 0x0D, 0x0A, 0
 msg_kernel_file_not_found db 'Error: kernel file not found.', 0x0D, 0x0A, 0
