@@ -20,6 +20,11 @@ global _small_code_
 _small_code_:
     ret
 
+global __get_ds
+__get_ds:
+    mov ax, ds
+    ret
+
 global __halt
 __halt:
     hlt

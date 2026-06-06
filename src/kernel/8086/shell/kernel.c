@@ -1,6 +1,7 @@
 #include "ide.h"
 #include "int.h"
 #include "keyboard.h"
+#include "mm.h"
 #include "power.h"
 #include "timer.h"
 #include "vga.h"
@@ -65,6 +66,10 @@ void shell_loop() {
 }
 
 void _kernel_main() {
+  puts("Initializing memory management...");
+  mm_init();
+  success("Done\n");
+
   puts("Initializing keyboard...");
   keyboard_init();
   success("Done\n");

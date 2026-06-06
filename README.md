@@ -49,6 +49,7 @@ cd src/boot/hello
         * ✓ Override System & Power Services (Replace int 15h/19h)
     * File System Commands (`cat`, `echo >`, `touch`, `ls`, `cd`, `mkdir`, `rmdir`, `rm`, `cp`, `mv`)
         * ✓ Override Disk Driver (Replace int 13h)
+        * ✓ Memory Management
         * FAT Driver (Read & Write)
     * External Command
         * Execute Flat Binary From Disk
@@ -57,7 +58,6 @@ cd src/boot/hello
 * 16-bit Protected Mode
     * Hello in Ring 3
         * IO Interrupts
-        * Memory Management
         * Process Context (Single Process)
         * Protected Mode API
     * Interactive Console in Ring 3

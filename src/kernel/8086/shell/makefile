@@ -14,7 +14,7 @@ QEMU := $(shell \
 	command -v qemu-system-i386.exe 2>/dev/null || \
 	echo "qemu-system-i386")
 
-C_SRCS = kernel.c ide.c int.c keyboard.c power.c timer.c vga.c
+C_SRCS = kernel.c heap.c ide.c int.c keyboard.c mm.c power.c timer.c vga.c
 C_OBJS = $(C_SRCS:.c=.obj)
 
 ASM_SRCS = bootstrap.asm

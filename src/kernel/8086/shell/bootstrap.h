@@ -1,6 +1,7 @@
 #ifndef __BOOTSTRAP_H_INCLUDED__
 #define __BOOTSTRAP_H_INCLUDED__
 
+unsigned short _get_ds();
 void _halt();
 void _disable();
 void _enable();
